@@ -26,9 +26,12 @@ function RestaurantSearchForm({
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
     const q = String(fd.get("q") || "").trim();
-    const params = new URLSearchParams(searchParams.toString());
+    const params = new URLSearchParams();
+    for (const key of ["city", "cuisine"] as const) {
+      const value = searchParams.get(key);
+      if (value) params.set(key, value);
+    }
     if (q) params.set("q", q);
-    else params.delete("q");
     if (!params.get("city") && hydrated && location?.label) {
       params.set("city", location.label);
     }
@@ -49,6 +52,7 @@ function RestaurantSearchForm({
         Search restaurants
       </label>
       <input
+        key={qDefault}
         id={`restaurant-search-${variant}`}
         name="q"
         type="search"
