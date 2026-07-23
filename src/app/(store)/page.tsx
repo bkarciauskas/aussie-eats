@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { CityPicker } from "@/components/city-picker";
+import { RestaurantSearch } from "@/components/restaurant-search";
 
 export default function HomePage() {
   return (
@@ -14,9 +15,7 @@ export default function HomePage() {
             AUD pricing, local seed data, zero external food APIs.
           </p>
           <div className="hero-actions">
-            <Link href="/restaurants" className="btn-primary">
-              Browse restaurants
-            </Link>
+            <RestaurantSearch variant="hero" />
           </div>
         </div>
       </section>

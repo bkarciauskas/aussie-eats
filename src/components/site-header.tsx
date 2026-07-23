@@ -2,17 +2,21 @@ import Link from "next/link";
 import { getSession } from "@/lib/session";
 import { logoutAction } from "@/app/actions/auth";
 import { CartBadge } from "@/components/cart-badge";
+import { RestaurantSearch } from "@/components/restaurant-search";
 
 export async function SiteHeader() {
   const session = await getSession();
 
   return (
     <header className="site-header">
-      <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 py-4">
-        <Link href="/" className="brand-mark" aria-label="AussieEats home">
+      <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-4 sm:gap-4">
+        <Link href="/" className="brand-mark shrink-0" aria-label="AussieEats home">
           AussieEats
         </Link>
-        <nav className="flex items-center gap-1 sm:gap-3" aria-label="Primary">
+        <div className="hidden min-w-0 flex-1 justify-center px-2 sm:flex md:px-4">
+          <RestaurantSearch variant="header" className="w-full max-w-md" />
+        </div>
+        <nav className="flex shrink-0 items-center gap-1 sm:gap-3" aria-label="Primary">
           <Link href="/restaurants" className="nav-link">
             Restaurants
           </Link>
