@@ -24,15 +24,20 @@ function RestaurantSearchForm({
 
   function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    // Location restores from localStorage after mount; wait so a saved pin is not dropped.
+    if (!hydrated) return;
+
     const fd = new FormData(e.currentTarget);
     const q = String(fd.get("q") || "").trim();
+    // Keep only restaurant filter params from the current URL (drop unrelated query keys).
     const params = new URLSearchParams();
     for (const key of ["city", "cuisine"] as const) {
       const value = searchParams.get(key);
       if (value) params.set(key, value);
     }
     if (q) params.set("q", q);
-    if (!params.get("city") && hydrated && location?.label) {
+    // Prefer an explicit URL/filter city; only fall back to the demo pin.
+    if (!params.get("city") && location?.label) {
       params.set("city", location.label);
     }
     const qs = params.toString();
