@@ -110,7 +110,7 @@ export function LocationSearch({ locationLabel }: { locationLabel?: string }) {
         <span>Find restaurants near</span>
         {hasMapsKey ? (
           <PlacesAutocomplete
-            onPick={(c) => setLocation(c)}
+            onPick={setLocation}
             disabled={pending}
           />
         ) : (
