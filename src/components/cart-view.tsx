@@ -15,7 +15,7 @@ export function CartView() {
     return (
       <div className="panel">
         <h1 className="font-display text-3xl">Your cart is empty</h1>
-        <p className="mt-2 text-[var(--ae-ink-muted)]">Browse Sydney restaurants and add a few favourites.</p>
+        <p className="mt-2 text-[var(--ae-ink-muted)]">Browse restaurants across Aussie cities and add a few favourites.</p>
         <Link href="/restaurants" className="btn-primary mt-6 inline-flex">
           Browse restaurants
         </Link>

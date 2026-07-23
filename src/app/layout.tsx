@@ -17,9 +17,9 @@ const body = Source_Sans_3({
 });
 
 export const metadata: Metadata = {
-  title: "AussieEats — Food delivery, Sydney-first",
+  title: "AussieEats — Food delivery across Australia",
   description:
-    "Local-only multi-vendor food delivery demo. Browse Sydney restaurants, order COD, manage menus in admin.",
+    "Local-only multi-vendor food delivery demo. Browse restaurants in Sydney, Melbourne, Brisbane, Perth, Adelaide, and Hobart; order COD; manage menus in admin.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

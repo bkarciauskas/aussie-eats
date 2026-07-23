@@ -47,10 +47,10 @@ npm run db:reset
 
 ## Presenter script (≈3 minutes)
 
-1. Open `/` — brand hero **AussieEats**, click **Use Sydney demo location**, then **Browse Sydney**.
-2. If the restaurant list is empty, your browser location may be far from Sydney—use **Use Sydney demo location** on home, then return to `/restaurants`.
-3. Open a restaurant (e.g. Harbour Burger Co) → **Add** items → **Cart** → **Checkout**.
-4. Log in as `demo@aussieeats.local` / `demo1234` if prompted → confirm NSW address → **Place order** (Pay on delivery).
+1. Open `/` — brand hero **AussieEats**, pick a demo city (Sydney, Melbourne, Brisbane, Perth, Adelaide, or Hobart), then **Browse restaurants**.
+2. On `/restaurants`, filter by **City** (e.g. Melbourne) or search by suburb/cuisine.
+3. Open a restaurant (e.g. Harbour Burger Co in Sydney, or Fitzroy Smash Yard in Melbourne) → **Add** items → **Cart** → **Checkout**.
+4. Log in as `demo@aussieeats.local` / `demo1234` if prompted → confirm AU address → **Place order** (Pay on delivery).
 5. Confirm the order appears under **Orders**.
 6. Open `/admin/login` → `admin@aussieeats.local` / `admin1234`.
 7. Dashboard shows counts; **Orders** → advance status (`pending` → `preparing` → …).
@@ -60,7 +60,8 @@ npm run db:reset
 
 - [ ] `npm install && npx prisma migrate dev && npm run db:seed && npm run dev` starts cleanly
 - [ ] Unauthenticated browse of `/restaurants` and a menu works
-- [ ] Sydney demo location button sets location for the session (localStorage)
+- [ ] Demo city picker sets location for the session (localStorage); city filter on `/restaurants` works
+- [ ] Seed includes restaurants in Sydney, Melbourne, Brisbane, Perth, Adelaide, and Hobart
 - [ ] Cart works without login; checkout requires login
 - [ ] Placing an order creates status `pending`, clears cart, shows in `/orders`
 - [ ] AUD formatting (`$x.xx`) and AU address fields (suburb / NSW / postcode / +61) appear

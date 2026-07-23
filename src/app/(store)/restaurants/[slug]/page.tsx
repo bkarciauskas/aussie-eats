@@ -33,7 +33,9 @@ export default async function RestaurantDetailPage({ params }: Props) {
         }}
       >
         <div className="page-shell !pb-8 !pt-16 text-white">
-          <p className="text-sm uppercase tracking-[0.14em] text-white/70">{restaurant.suburb}</p>
+          <p className="text-sm uppercase tracking-[0.14em] text-white/70">
+            {restaurant.suburb}, {restaurant.city}
+          </p>
           <h1 className="font-display mt-2 text-4xl sm:text-5xl">{restaurant.name}</h1>
           <p className="mt-3 max-w-2xl text-white/85">{restaurant.description}</p>
           <div className="mt-4 flex flex-wrap gap-3 text-sm text-white/80">

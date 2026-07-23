@@ -9,7 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { SYDNEY_DEMO } from "@/lib/restaurants";
+import { DEMO_CITIES, findDemoCity, type DemoCity } from "@/lib/cities";
 
 export type DemoLocation = {
   label: string;
@@ -22,6 +22,8 @@ export type DemoLocation = {
 
 type LocationContextValue = {
   location: DemoLocation | null;
+  setCityLocation: (city: DemoCity | string) => void;
+  /** @deprecated Use setCityLocation("sydney") */
   setSydneyLocation: () => void;
   clearLocation: () => void;
   hydrated: boolean;
@@ -30,6 +32,24 @@ type LocationContextValue = {
 const STORAGE_KEY = "aussieeats_location_v1";
 const LocationContext = createContext<LocationContextValue | null>(null);
 
+function toLocation(city: DemoCity): DemoLocation {
+  return {
+    label: city.label,
+    suburb: city.suburb,
+    state: city.state,
+    postcode: city.postcode,
+    lat: city.lat,
+    lng: city.lng,
+  };
+}
+
+function normalizeStoredLocation(stored: DemoLocation): DemoLocation {
+  const matched =
+    DEMO_CITIES.find((c) => c.lat === stored.lat && c.lng === stored.lng) ??
+    findDemoCity(stored.label);
+  return matched ? toLocation(matched) : stored;
+}
+
 export function LocationProvider({ children }: { children: ReactNode }) {
   const [location, setLocation] = useState<DemoLocation | null>(null);
   const [hydrated, setHydrated] = useState(false);
@@ -37,7 +57,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setLocation(JSON.parse(raw));
+      if (raw) setLocation(normalizeStoredLocation(JSON.parse(raw)));
     } catch {
       // ignore
     }
@@ -53,15 +73,20 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     }
   }, [location, hydrated]);
 
-  const setSydneyLocation = useCallback(() => {
-    setLocation({ ...SYDNEY_DEMO });
+  const setCityLocation = useCallback((city: DemoCity | string) => {
+    const resolved = typeof city === "string" ? findDemoCity(city) : city;
+    if (resolved) setLocation(toLocation(resolved));
   }, []);
+
+  const setSydneyLocation = useCallback(() => {
+    setCityLocation(DEMO_CITIES[0]);
+  }, [setCityLocation]);
 
   const clearLocation = useCallback(() => setLocation(null), []);
 
   const value = useMemo(
-    () => ({ location, setSydneyLocation, clearLocation, hydrated }),
-    [location, setSydneyLocation, clearLocation, hydrated],
+    () => ({ location, setCityLocation, setSydneyLocation, clearLocation, hydrated }),
+    [location, setCityLocation, setSydneyLocation, clearLocation, hydrated],
   );
 
   return <LocationContext.Provider value={value}>{children}</LocationContext.Provider>;
