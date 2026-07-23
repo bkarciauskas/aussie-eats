@@ -1,0 +1,105 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  name         String
+  /// CUSTOMER | ADMIN
+  role         String    @default("CUSTOMER")
+  createdAt    DateTime  @default(now())
+  addresses    Address[]
+  orders       Order[]
+}
+
+model Address {
+  id       String  @id @default(cuid())
+  userId   String
+  user     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label    String
+  line1    String
+  suburb   String
+  state    String  @default("NSW")
+  postcode String
+  lat      Float?
+  lng      Float?
+}
+
+model Restaurant {
+  id               String     @id @default(cuid())
+  name             String
+  slug             String     @unique
+  description      String
+  image            String
+  cuisineTags      String
+  suburb           String
+  lat              Float
+  lng              Float
+  deliveryFeeCents Int
+  minOrderCents    Int
+  isOpen           Boolean    @default(true)
+  isActive         Boolean    @default(true)
+  rating           Float      @default(4.5)
+  phone            String?
+  categories       Category[]
+  orders           Order[]
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+}
+
+model Category {
+  id           String     @id @default(cuid())
+  restaurantId String
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  name         String
+  sortOrder    Int        @default(0)
+  items        MenuItem[]
+}
+
+model MenuItem {
+  id          String      @id @default(cuid())
+  categoryId  String
+  category    Category    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  name        String
+  description String
+  priceCents  Int
+  image       String?
+  isAvailable Boolean     @default(true)
+  orderItems  OrderItem[]
+}
+
+model Order {
+  id               String      @id @default(cuid())
+  userId           String
+  user             User        @relation(fields: [userId], references: [id])
+  restaurantId     String
+  restaurant       Restaurant  @relation(fields: [restaurantId], references: [id])
+  /// pending | preparing | out_for_delivery | delivered | cancelled
+  status           String      @default("pending")
+  subtotalCents    Int
+  deliveryFeeCents Int
+  totalCents       Int
+  deliveryAddress  String
+  paymentMethod    String      @default("Pay on delivery")
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  items            OrderItem[]
+}
+
+model OrderItem {
+  id             String    @id @default(cuid())
+  orderId        String
+  order          Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItemId     String?
+  menuItem       MenuItem? @relation(fields: [menuItemId], references: [id], onDelete: SetNull)
+  name           String
+  unitPriceCents Int
+  quantity       Int
+}
