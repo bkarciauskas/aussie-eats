@@ -17,7 +17,7 @@ export default async function LoginPage({ searchParams }: Props) {
           </Link>
         </p>
       </div>
-      <LoginForm next={next.startsWith("/") ? next : "/"} />
+      <LoginForm next={next.startsWith("/") && !next.startsWith("//") ? next : "/"} />
     </div>
   );
 }

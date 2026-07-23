@@ -45,15 +45,19 @@ export async function placeOrderAction(input: PlaceOrderInput) {
     },
   });
 
-  if (menuItems.length !== menuItemIds.length) {
+  if (menuItems.length !== new Set(menuItemIds).size) {
     return { error: "Some items are unavailable. Please refresh the menu." };
+  }
+
+  if (input.items.some((line) => Math.floor(line.quantity) < 1)) {
+    return { error: "Invalid quantity in cart. Please refresh and try again." };
   }
 
   const byId = new Map(menuItems.map((m) => [m.id, m]));
   let subtotalCents = 0;
   const orderItems = input.items.map((line) => {
     const item = byId.get(line.menuItemId)!;
-    const quantity = Math.max(1, Math.floor(line.quantity));
+    const quantity = Math.floor(line.quantity);
     subtotalCents += item.priceCents * quantity;
     return {
       menuItemId: item.id,

@@ -11,7 +11,7 @@ export async function loginAction(formData: FormData) {
   if ("error" in result && result.error) {
     return { error: result.error };
   }
-  redirect(next.startsWith("/") ? next : "/");
+  redirect(next.startsWith("/") && !next.startsWith("//") ? next : "/");
 }
 
 export async function adminLoginAction(formData: FormData) {
