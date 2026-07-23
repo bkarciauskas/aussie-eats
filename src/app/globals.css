@@ -349,8 +349,8 @@ button:focus-visible {
 }
 
 .status-pill[data-status="out_for_delivery"] {
-  background: #f4f3ff;
-  color: #5925dc;
+  background: #e8f5ef;
+  color: #0f5132;
 }
 
 .status-pill[data-status="cancelled"] {
