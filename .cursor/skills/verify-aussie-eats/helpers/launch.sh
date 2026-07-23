@@ -36,6 +36,9 @@ if [[ -f "$RUN_DIR/pid" ]]; then
       if ! "$SKILL_DIR/helpers/doctor.sh" >/dev/null 2>&1; then
         echo "verify instance unhealthy (pid=$old_pid); stopping before relaunch" >&2
         "$(dirname "$0")/cleanup.sh"
+      else
+        echo "verify instance already running (pid=$old_pid port=$(cat "$RUN_DIR/port" 2>/dev/null || echo '?'))"
+        exit 0
       fi
     fi
   else
