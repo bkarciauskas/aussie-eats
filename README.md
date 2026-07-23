@@ -47,8 +47,8 @@ npm run db:reset
 
 ## Presenter script (≈3 minutes)
 
-1. Open `/` — brand hero **AussieEats**, pick a demo city (Sydney, Melbourne, Brisbane, Perth, Adelaide, or Hobart), then **Browse restaurants**.
-2. On `/restaurants`, filter by **City** (e.g. Melbourne) or search by suburb/cuisine.
+1. Open `/` — brand hero **AussieEats**, use the hero **Find** search (e.g. `burger` or `Fitzroy`), or pick a demo city below then search again (city scopes results).
+2. On `/restaurants`, refine with **City** / **Cuisine** filters, or use the header search from any storefront page.
 3. Open a restaurant (e.g. Harbour Burger Co in Sydney, or Fitzroy Smash Yard in Melbourne) → **Add** items → **Cart** → **Checkout**.
 4. Log in as `demo@aussieeats.local` / `demo1234` if prompted → confirm AU address → **Place order** (Pay on delivery).
 5. Confirm the order appears under **Orders**.
@@ -60,6 +60,7 @@ npm run db:reset
 
 - [ ] `npm install && npx prisma migrate dev && npm run db:seed && npm run dev` starts cleanly
 - [ ] Unauthenticated browse of `/restaurants` and a menu works
+- [ ] Home hero search and header search both land on `/restaurants?q=…` (with `city` when a demo pin is set)
 - [ ] Demo city picker sets location for the session (localStorage); city filter on `/restaurants` works
 - [ ] Seed includes restaurants in Sydney, Melbourne, Brisbane, Perth, Adelaide, and Hobart
 - [ ] Cart works without login; checkout requires login
