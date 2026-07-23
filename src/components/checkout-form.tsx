@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/components/cart-provider";
 import { placeOrderAction } from "@/app/actions/orders";
@@ -27,9 +28,9 @@ export function CheckoutForm({ isLoggedIn, defaultAddress }: Props) {
     return (
       <div className="panel">
         <p>Your cart is empty.</p>
-        <a href="/restaurants" className="btn-primary mt-4 inline-flex">
+        <Link href="/restaurants" className="btn-primary mt-4 inline-flex">
           Browse restaurants
-        </a>
+        </Link>
       </div>
     );
   }
@@ -41,12 +42,12 @@ export function CheckoutForm({ isLoggedIn, defaultAddress }: Props) {
         <p className="mt-2 text-[var(--ae-ink-muted)]">
           You can browse and build a cart without an account. Sign in to place your order.
         </p>
-        <a
+        <Link
           href={`/login?next=${encodeURIComponent("/checkout")}`}
           className="btn-primary mt-6 inline-flex"
         >
           Log in to continue
-        </a>
+        </Link>
         <p className="mt-3 text-sm text-[var(--ae-ink-soft)]">
           Demo: demo@aussieeats.local / demo1234
         </p>
