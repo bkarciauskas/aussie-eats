@@ -8,7 +8,7 @@ import { ToggleRestaurantActive } from "@/components/admin-restaurant-actions";
 export default async function AdminRestaurantsPage() {
   await ensureAdmin();
   const restaurants = await prisma.restaurant.findMany({
-    orderBy: { name: "asc" },
+    orderBy: [{ city: "asc" }, { name: "asc" }],
   });
 
   return (
@@ -28,6 +28,7 @@ export default async function AdminRestaurantsPage() {
           <thead>
             <tr>
               <th>Name</th>
+              <th>City</th>
               <th>Suburb</th>
               <th>Cuisines</th>
               <th>Delivery</th>
@@ -42,6 +43,7 @@ export default async function AdminRestaurantsPage() {
                   <div className="font-medium">{r.name}</div>
                   <div className="text-xs text-[var(--ae-ink-soft)]">{r.slug}</div>
                 </td>
+                <td>{r.city}</td>
                 <td>{r.suburb}</td>
                 <td>{parseCuisineTags(r.cuisineTags).join(", ")}</td>
                 <td>{formatAUD(r.deliveryFeeCents)}</td>

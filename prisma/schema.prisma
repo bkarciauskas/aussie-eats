@@ -39,6 +39,7 @@ model Restaurant {
   description      String
   image            String
   cuisineTags      String
+  city             String     @default("Sydney")
   suburb           String
   lat              Float
   lng              Float

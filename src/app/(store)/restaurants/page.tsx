@@ -1,22 +1,26 @@
+import { Suspense } from "react";
 import { prisma } from "@/lib/db";
 import { RestaurantCard } from "@/components/restaurant-card";
 import { RestaurantFilters } from "@/components/restaurant-filters";
 import { parseCuisineTags } from "@/lib/restaurants";
+import { CITY_NAMES } from "@/lib/cities";
 
 type Props = {
-  searchParams: Promise<{ q?: string; cuisine?: string }>;
+  searchParams: Promise<{ q?: string; cuisine?: string; city?: string }>;
 };
 
 export default async function RestaurantsPage({ searchParams }: Props) {
-  const { q = "", cuisine = "" } = await searchParams;
+  const { q = "", cuisine = "", city = "" } = await searchParams;
   const restaurants = await prisma.restaurant.findMany({
     where: { isActive: true },
-    orderBy: [{ rating: "desc" }, { name: "asc" }],
+    orderBy: [{ city: "asc" }, { rating: "desc" }, { name: "asc" }],
   });
 
   const allCuisines = Array.from(
     new Set(restaurants.flatMap((r) => parseCuisineTags(r.cuisineTags))),
   ).sort();
+
+  const cityFilter = CITY_NAMES.find((c) => c.toLowerCase() === city.toLowerCase()) || "";
 
   const filtered = restaurants.filter((r) => {
     const tags = parseCuisineTags(r.cuisineTags);
@@ -24,10 +28,12 @@ export default async function RestaurantsPage({ searchParams }: Props) {
       !q ||
       r.name.toLowerCase().includes(q.toLowerCase()) ||
       r.suburb.toLowerCase().includes(q.toLowerCase()) ||
+      r.city.toLowerCase().includes(q.toLowerCase()) ||
       tags.some((t) => t.toLowerCase().includes(q.toLowerCase()));
     const matchesCuisine =
       !cuisine || tags.some((t) => t.toLowerCase() === cuisine.toLowerCase());
-    return matchesQ && matchesCuisine;
+    const matchesCity = !cityFilter || r.city.toLowerCase() === cityFilter.toLowerCase();
+    return matchesQ && matchesCuisine && matchesCity;
   });
 
   return (
@@ -36,19 +42,27 @@ export default async function RestaurantsPage({ searchParams }: Props) {
         <div>
           <h1 className="font-display text-4xl text-[var(--ae-green)]">Restaurants</h1>
           <p className="mt-2 text-[var(--ae-ink-muted)]">
-            Sydney-first seed data · Surry Hills, Newtown, Bondi, Parramatta, Manly
+            {cityFilter
+              ? `${cityFilter} · filter or search across seeded suburbs`
+              : "Sydney, Melbourne, Brisbane, Perth, Adelaide, Hobart"}
           </p>
         </div>
       </div>
 
-      <RestaurantFilters cuisines={allCuisines} initialQ={q} initialCuisine={cuisine} />
+      <Suspense fallback={<div className="text-sm text-[var(--ae-ink-muted)]">Loading filters…</div>}>
+        <RestaurantFilters
+          cuisines={allCuisines}
+          initialQ={q}
+          initialCuisine={cuisine}
+          initialCity={cityFilter}
+        />
+      </Suspense>
 
       {filtered.length === 0 ? (
         <div className="panel mt-8">
           <h2 className="font-display text-2xl">No restaurants match</h2>
           <p className="mt-2 text-[var(--ae-ink-muted)]">
-            If the list is empty after seeding, use “Use Sydney demo location” on the home page and
-            clear filters.
+            Try another city filter, clear search, or re-run <code>npm run db:seed</code>.
           </p>
         </div>
       ) : (

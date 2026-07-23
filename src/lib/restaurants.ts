@@ -1,3 +1,5 @@
+import { DEMO_CITIES, type DemoCity } from "@/lib/cities";
+
 export function parseCuisineTags(raw: string): string[] {
   try {
     const parsed = JSON.parse(raw);
@@ -13,14 +15,10 @@ export function parseCuisineTags(raw: string): string[] {
     .filter(Boolean);
 }
 
-export const SYDNEY_DEMO = {
-  label: "Sydney CBD",
-  suburb: "Sydney",
-  state: "NSW",
-  postcode: "2000",
-  lat: -33.8688,
-  lng: 151.2093,
-} as const;
+/** @deprecated Prefer DEMO_CITIES / findDemoCity — kept for older callers. */
+export const SYDNEY_DEMO = DEMO_CITIES[0];
+
+export { DEMO_CITIES, type DemoCity };
 
 /** Haversine distance in km */
 export function distanceKm(lat1: number, lng1: number, lat2: number, lng2: number): number {

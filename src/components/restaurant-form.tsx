@@ -2,12 +2,14 @@
 
 import { useState, useTransition } from "react";
 import { upsertRestaurantAction } from "@/app/actions/admin-restaurants";
+import { CITY_NAMES } from "@/lib/cities";
 import { parseCuisineTags } from "@/lib/restaurants";
 
 type RestaurantFormValues = {
   id?: string;
   name?: string;
   description?: string;
+  city?: string;
   suburb?: string;
   cuisineTags?: string;
   image?: string;
@@ -48,10 +50,22 @@ export function RestaurantForm({ restaurant }: { restaurant?: RestaurantFormValu
         <span>Description</span>
         <textarea name="description" rows={3} required defaultValue={restaurant?.description || ""} />
       </label>
-      <label className="field">
-        <span>Suburb</span>
-        <input name="suburb" required defaultValue={restaurant?.suburb || "Sydney"} />
-      </label>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <label className="field">
+          <span>City</span>
+          <select name="city" defaultValue={restaurant?.city || "Sydney"} required>
+            {CITY_NAMES.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="field">
+          <span>Suburb</span>
+          <input name="suburb" required defaultValue={restaurant?.suburb || "Sydney"} />
+        </label>
+      </div>
       <label className="field">
         <span>Cuisine tags (comma-separated)</span>
         <input name="cuisineTags" defaultValue={tags || "Cafe"} />

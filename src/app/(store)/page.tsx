@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { SydneyLocationButton } from "@/components/sydney-location-button";
+import { CityPicker } from "@/components/city-picker";
 
 export default function HomePage() {
   return (
@@ -8,26 +8,34 @@ export default function HomePage() {
         <div className="hero-media" aria-hidden="true" />
         <div className="hero-content">
           <p className="hero-brand">AussieEats</p>
-          <h1 className="hero-headline">Sydney flavours, delivered nearby.</h1>
+          <h1 className="hero-headline">Australian flavours, delivered nearby.</h1>
           <p className="hero-support">
-            Multi-vendor demo with AUD pricing, local seed data, and zero calls to external food APIs.
+            Multi-vendor demo across Sydney, Melbourne, Brisbane, Perth, Adelaide, and Hobart —
+            AUD pricing, local seed data, zero external food APIs.
           </p>
           <div className="hero-actions">
             <Link href="/restaurants" className="btn-primary">
-              Browse Sydney
+              Browse restaurants
             </Link>
-            <SydneyLocationButton className="btn-secondary" label="Use Sydney demo location" />
           </div>
         </div>
       </section>
 
       <section className="page-shell">
+        <div className="mb-10">
+          <h2 className="font-display text-2xl text-[var(--ae-green)]">Choose a demo city</h2>
+          <p className="mt-2 max-w-xl text-sm text-[var(--ae-ink-muted)]">
+            Set a city pin for the session, then browse restaurants seeded for that market. If the
+            list looks empty, pick a city below and filter on the restaurants page.
+          </p>
+          <CityPicker className="mt-4" showBrowseLink />
+        </div>
+
         <div className="grid gap-8 md:grid-cols-3">
           <div>
             <h2 className="font-display text-2xl text-[var(--ae-green)]">Find food near you</h2>
             <p className="mt-2 text-sm text-[var(--ae-ink-muted)]">
-              If the restaurant list looks empty, your browser location may be far from Sydney—tap
-              “Use Sydney demo location” above, then browse.
+              Six Australian cities with local suburbs and AUD menus — tap a city above, then browse.
             </p>
           </div>
           <div>

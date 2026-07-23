@@ -1,24 +1,16 @@
 "use client";
 
-import { useLocation } from "@/components/location-provider";
+import { CityLocationButton } from "@/components/city-picker";
 
-export function SydneyLocationButton({
-  className = "btn-primary",
-  label = "Use Sydney demo location",
-}: {
+/** @deprecated Prefer CityPicker / CityLocationButton */
+export function SydneyLocationButton(props: {
   className?: string;
   label?: string;
 }) {
-  const { location, setSydneyLocation, hydrated } = useLocation();
-
   return (
-    <button
-      type="button"
-      className={className}
-      onClick={setSydneyLocation}
-      disabled={!hydrated}
-    >
-      {location ? `Location: ${location.label}` : label}
-    </button>
+    <CityLocationButton
+      className={props.className}
+      label={props.label ?? "Use Sydney demo location"}
+    />
   );
 }

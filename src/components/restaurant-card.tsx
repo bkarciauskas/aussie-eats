@@ -8,6 +8,7 @@ type Props = {
   description: string;
   image: string;
   cuisineTags: string;
+  city?: string;
   suburb: string;
   rating: number;
   deliveryFeeCents: number;
@@ -21,6 +22,7 @@ export function RestaurantCard({
   description,
   image,
   cuisineTags,
+  city,
   suburb,
   rating,
   deliveryFeeCents,
@@ -46,7 +48,7 @@ export function RestaurantCard({
         </div>
         <p className="mt-1 line-clamp-2 text-sm text-[var(--ae-ink-muted)]">{description}</p>
         <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs text-[var(--ae-ink-soft)]">
-          <span>{suburb}</span>
+          <span>{city ? `${suburb}, ${city}` : suburb}</span>
           <span>{formatAUD(deliveryFeeCents)} delivery</span>
           {distanceKm != null ? <span>{distanceKm.toFixed(1)} km</span> : null}
           <span className={isOpen ? "text-[var(--ae-green)]" : "text-[var(--ae-danger)]"}>

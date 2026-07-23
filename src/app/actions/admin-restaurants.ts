@@ -20,6 +20,7 @@ export async function upsertRestaurantAction(formData: FormData) {
   const id = String(formData.get("id") || "");
   const name = String(formData.get("name") || "").trim();
   const description = String(formData.get("description") || "").trim();
+  const city = String(formData.get("city") || "Sydney").trim();
   const suburb = String(formData.get("suburb") || "").trim();
   const cuisineTagsRaw = String(formData.get("cuisineTags") || "");
   const image = String(formData.get("image") || "/images/restaurants/burger.jpg");
@@ -30,8 +31,8 @@ export async function upsertRestaurantAction(formData: FormData) {
   const isOpen = formData.get("isOpen") === "on" || formData.get("isOpen") === "true";
   const isActive = formData.get("isActive") === "on" || formData.get("isActive") === "true";
 
-  if (!name || !description || !suburb) {
-    return { error: "Name, description, and suburb are required." };
+  if (!name || !description || !suburb || !city) {
+    return { error: "Name, description, city, and suburb are required." };
   }
 
   const cuisineTags = JSON.stringify(
@@ -50,6 +51,7 @@ export async function upsertRestaurantAction(formData: FormData) {
       data: {
         name,
         description,
+        city,
         suburb,
         cuisineTags,
         image,
@@ -73,6 +75,7 @@ export async function upsertRestaurantAction(formData: FormData) {
         name,
         slug,
         description,
+        city,
         suburb,
         cuisineTags,
         image,
