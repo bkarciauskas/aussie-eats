@@ -43,6 +43,13 @@ function toLocation(city: DemoCity): DemoLocation {
   };
 }
 
+function normalizeStoredLocation(stored: DemoLocation): DemoLocation {
+  const matched =
+    DEMO_CITIES.find((c) => c.lat === stored.lat && c.lng === stored.lng) ??
+    findDemoCity(stored.label);
+  return matched ? toLocation(matched) : stored;
+}
+
 export function LocationProvider({ children }: { children: ReactNode }) {
   const [location, setLocation] = useState<DemoLocation | null>(null);
   const [hydrated, setHydrated] = useState(false);
@@ -50,7 +57,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setLocation(JSON.parse(raw));
+      if (raw) setLocation(normalizeStoredLocation(JSON.parse(raw)));
     } catch {
       // ignore
     }

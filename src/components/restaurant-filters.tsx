@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useTransition } from "react";
+import { useRef, useTransition } from "react";
 import { CITY_NAMES } from "@/lib/cities";
 
 export function RestaurantFilters({
@@ -18,12 +18,26 @@ export function RestaurantFilters({
   const router = useRouter();
   const searchParams = useSearchParams();
   const [pending, startTransition] = useTransition();
+  const formRef = useRef<HTMLFormElement>(null);
 
-  function apply(next: { q?: string; cuisine?: string; city?: string }) {
+  function readForm() {
+    if (!formRef.current) {
+      return { q: initialQ, cuisine: initialCuisine, city: initialCity };
+    }
+    const fd = new FormData(formRef.current);
+    return {
+      q: String(fd.get("q") || ""),
+      cuisine: String(fd.get("cuisine") || ""),
+      city: String(fd.get("city") || ""),
+    };
+  }
+
+  function apply(next: { q?: string; cuisine?: string; city?: string } = {}) {
+    const current = readForm();
     const params = new URLSearchParams(searchParams.toString());
-    const q = next.q ?? initialQ;
-    const cuisine = next.cuisine ?? initialCuisine;
-    const city = next.city ?? initialCity;
+    const q = next.q ?? current.q;
+    const cuisine = next.cuisine ?? current.cuisine;
+    const city = next.city ?? current.city;
     if (q) params.set("q", q);
     else params.delete("q");
     if (cuisine) params.set("cuisine", cuisine);
@@ -37,15 +51,11 @@ export function RestaurantFilters({
 
   return (
     <form
+      ref={formRef}
       className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end"
       onSubmit={(e) => {
         e.preventDefault();
-        const fd = new FormData(e.currentTarget);
-        apply({
-          q: String(fd.get("q") || ""),
-          cuisine: String(fd.get("cuisine") || ""),
-          city: String(fd.get("city") || ""),
-        });
+        apply();
       }}
     >
       <label className="field min-w-[12rem] flex-1">
@@ -57,7 +67,7 @@ export function RestaurantFilters({
         <select
           name="city"
           defaultValue={initialCity}
-          onChange={(e) => apply({ city: e.target.value })}
+          onChange={() => apply()}
           disabled={pending}
         >
           <option value="">All cities</option>
@@ -73,7 +83,7 @@ export function RestaurantFilters({
         <select
           name="cuisine"
           defaultValue={initialCuisine}
-          onChange={(e) => apply({ cuisine: e.target.value })}
+          onChange={() => apply()}
           disabled={pending}
         >
           <option value="">All cuisines</option>
