@@ -49,23 +49,33 @@ export async function placeOrderAction(input: PlaceOrderInput) {
     return { error: "Some items are unavailable. Please refresh the menu." };
   }
 
-  if (input.items.some((line) => Math.floor(line.quantity) < 1)) {
-    return { error: "Invalid quantity in cart. Please refresh and try again." };
-  }
-
   const byId = new Map(menuItems.map((m) => [m.id, m]));
   let subtotalCents = 0;
-  const orderItems = input.items.map((line) => {
-    const item = byId.get(line.menuItemId)!;
-    const quantity = Math.floor(line.quantity);
+  const orderItems: {
+    menuItemId: string;
+    name: string;
+    unitPriceCents: number;
+    quantity: number;
+  }[] = [];
+
+  for (const line of input.items) {
+    const rawQty = Number(line.quantity);
+    const quantity = Math.floor(rawQty);
+    if (!Number.isFinite(rawQty) || quantity < 1) {
+      return { error: "Invalid quantity in cart. Please refresh and try again." };
+    }
+    const item = byId.get(line.menuItemId);
+    if (!item) {
+      return { error: "Some items are unavailable. Please refresh the menu." };
+    }
     subtotalCents += item.priceCents * quantity;
-    return {
+    orderItems.push({
       menuItemId: item.id,
       name: item.name,
       unitPriceCents: item.priceCents,
       quantity,
-    };
-  });
+    });
+  }
 
   if (subtotalCents < restaurant.minOrderCents) {
     return {

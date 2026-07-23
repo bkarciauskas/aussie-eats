@@ -2,16 +2,17 @@
 
 import { redirect } from "next/navigation";
 import { loginWithPassword, logout, signupCustomer } from "@/lib/auth";
+import { safeInternalPath } from "@/lib/safe-redirect";
 
 export async function loginAction(formData: FormData) {
   const email = String(formData.get("email") || "");
   const password = String(formData.get("password") || "");
-  const next = String(formData.get("next") || "/");
+  const next = safeInternalPath(formData.get("next"), "/");
   const result = await loginWithPassword(email, password);
   if ("error" in result && result.error) {
     return { error: result.error };
   }
-  redirect(next.startsWith("/") && !next.startsWith("//") ? next : "/");
+  redirect(next);
 }
 
 export async function adminLoginAction(formData: FormData) {

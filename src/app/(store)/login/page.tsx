@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { LoginForm } from "@/components/login-form";
+import { safeInternalPath } from "@/lib/safe-redirect";
 
 type Props = { searchParams: Promise<{ next?: string }> };
 
@@ -17,7 +18,7 @@ export default async function LoginPage({ searchParams }: Props) {
           </Link>
         </p>
       </div>
-      <LoginForm next={next.startsWith("/") && !next.startsWith("//") ? next : "/"} />
+      <LoginForm next={safeInternalPath(next, "/")} />
     </div>
   );
 }
