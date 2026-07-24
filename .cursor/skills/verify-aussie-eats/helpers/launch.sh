@@ -4,6 +4,10 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../../../.." && pwd)"
 SKILL_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 RUN_DIR="$SKILL_DIR/.run"
+PORT="${PORT:-}"
+if [[ -z "$PORT" && -f "$RUN_DIR/port" ]]; then
+  PORT="$(cat "$RUN_DIR/port")"
+fi
 PORT="${PORT:-3010}"
 HOST="${HOST:-127.0.0.1}"
 
@@ -16,8 +20,24 @@ if [[ -f "$RUN_DIR/pid" ]]; then
       echo "verify instance already running (pid=$old_pid port=$(cat "$RUN_DIR/port" 2>/dev/null || echo '?'))"
       exit 0
     fi
-    echo "verify instance unhealthy (pid=$old_pid); stopping before relaunch" >&2
-    "$(dirname "$0")/cleanup.sh" || true
+    echo "verify instance not ready (pid=$old_pid); waiting…" >&2
+    for _ in $(seq 1 90); do
+      if "$SKILL_DIR/helpers/doctor.sh" >/dev/null 2>&1; then
+        echo "verify instance already running (pid=$old_pid port=$(cat "$RUN_DIR/port" 2>/dev/null || echo '?'))"
+        exit 0
+      fi
+      if ! kill -0 "$old_pid" 2>/dev/null; then
+        rm -f "$RUN_DIR/pid" "$RUN_DIR/port" "$RUN_DIR/host" "$RUN_DIR/pgid" "$RUN_DIR/listener_pid"
+        break
+      fi
+      sleep 1
+    done
+    if [[ -f "$RUN_DIR/pid" ]] && kill -0 "$(cat "$RUN_DIR/pid")" 2>/dev/null; then
+      if ! "$SKILL_DIR/helpers/doctor.sh" >/dev/null 2>&1; then
+        echo "verify instance unhealthy (pid=$old_pid); stopping before relaunch" >&2
+        "$(dirname "$0")/cleanup.sh"
+      fi
+    fi
   else
     rm -f "$RUN_DIR/pid" "$RUN_DIR/port" "$RUN_DIR/host" "$RUN_DIR/pgid" "$RUN_DIR/listener_pid"
   fi

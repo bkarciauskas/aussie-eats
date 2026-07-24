@@ -58,17 +58,7 @@ if port_in_use; then
     lp_pgid="$(ps -o pgid= -p "$lp" 2>/dev/null | tr -d ' ' || true)"
     if [[ -n "${pgid:-}" && "$lp_pgid" == "$pgid" ]]; then
       stop_pid "$lp"
-      continue
     fi
-    if [[ "$has_pids" == false ]]; then
-      stop_pid "$lp"
-    fi
-  done
-fi
-
-if port_in_use && [[ "$has_pids" == true ]]; then
-  for lp in $(lsof -nP -iTCP:"$PORT" -sTCP:LISTEN -t 2>/dev/null || true); do
-    stop_pid "$lp"
   done
 fi
 
