@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useTransition, type FormEvent } from "react";
 import { useLocation } from "@/components/location-provider";
+import { resolveRestaurantQuery } from "@/lib/cities";
 
 type RestaurantSearchProps = {
   variant: "hero" | "header";
@@ -28,18 +29,20 @@ function RestaurantSearchForm({
     if (!hydrated) return;
 
     const fd = new FormData(e.currentTarget);
-    const q = String(fd.get("q") || "").trim();
-    // Keep only restaurant filter params from the current URL (drop unrelated query keys).
+    const rawQ = String(fd.get("q") || "").trim();
+    // Keep cuisine from the current URL; city/q are resolved below.
     const params = new URLSearchParams();
-    for (const key of ["city", "cuisine"] as const) {
-      const value = searchParams.get(key);
-      if (value) params.set(key, value);
-    }
-    if (q) params.set("q", q);
-    // Prefer an explicit URL/filter city; only fall back to the demo pin.
-    if (!params.get("city") && location?.label) {
-      params.set("city", location.label);
-    }
+    const cuisine = searchParams.get("cuisine");
+    if (cuisine) params.set("cuisine", cuisine);
+
+    // Typing a city name (e.g. "melbourne") should switch city, not fight the demo pin.
+    const resolved = resolveRestaurantQuery({
+      q: rawQ,
+      city: searchParams.get("city") || location?.label || "",
+    });
+    if (resolved.q) params.set("q", resolved.q);
+    if (resolved.city) params.set("city", resolved.city);
+
     const qs = params.toString();
     startTransition(() => {
       router.push(qs ? `/restaurants?${qs}` : "/restaurants");

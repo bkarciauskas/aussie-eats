@@ -73,3 +73,24 @@ export function findDemoCity(idOrLabel: string | null | undefined): DemoCity | u
 }
 
 export const CITY_NAMES = DEMO_CITIES.map((c) => c.label);
+
+/** If the search box is just a city name, treat it as a city filter (not text search). */
+export function resolveRestaurantQuery(input: {
+  q?: string;
+  city?: string;
+  /** When true, use the city dropdown and do not promote q to city. */
+  explicitCity?: boolean;
+}): { q: string; city: string } {
+  const rawQ = (input.q || "").trim();
+  const fromCity = findDemoCity(input.city);
+
+  if (input.explicitCity) {
+    return { q: findDemoCity(rawQ) ? "" : rawQ, city: fromCity?.label || "" };
+  }
+
+  const fromQ = findDemoCity(rawQ);
+  if (fromQ) {
+    return { q: "", city: fromQ.label };
+  }
+  return { q: rawQ, city: fromCity?.label || "" };
+}
