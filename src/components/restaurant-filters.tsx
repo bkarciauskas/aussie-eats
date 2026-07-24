@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useRef, useTransition } from "react";
-import { CITY_NAMES } from "@/lib/cities";
+import { CITY_NAMES, resolveRestaurantQuery } from "@/lib/cities";
 
 export function RestaurantFilters({
   cuisines,
@@ -35,14 +35,17 @@ export function RestaurantFilters({
   function apply(next: { q?: string; cuisine?: string; city?: string } = {}) {
     const current = readForm();
     const params = new URLSearchParams(searchParams.toString());
-    const q = next.q ?? current.q;
     const cuisine = next.cuisine ?? current.cuisine;
-    const city = next.city ?? current.city;
-    if (q) params.set("q", q);
+    // City-name searches win over a stale city dropdown (e.g. q=melbourne + city=Sydney).
+    const resolved = resolveRestaurantQuery({
+      q: next.q ?? current.q,
+      city: next.city ?? current.city,
+    });
+    if (resolved.q) params.set("q", resolved.q);
     else params.delete("q");
     if (cuisine) params.set("cuisine", cuisine);
     else params.delete("cuisine");
-    if (city) params.set("city", city);
+    if (resolved.city) params.set("city", resolved.city);
     else params.delete("city");
     startTransition(() => {
       router.push(`/restaurants?${params.toString()}`);
@@ -60,11 +63,17 @@ export function RestaurantFilters({
     >
       <label className="field min-w-[12rem] flex-1">
         <span>Search</span>
-        <input name="q" defaultValue={initialQ} placeholder="Restaurant, suburb, cuisine…" />
+        <input
+          key={`q-${initialQ}`}
+          name="q"
+          defaultValue={initialQ}
+          placeholder="Restaurant, suburb, cuisine…"
+        />
       </label>
       <label className="field min-w-[10rem]">
         <span>City</span>
         <select
+          key={`city-${initialCity}`}
           name="city"
           defaultValue={initialCity}
           onChange={() => apply()}

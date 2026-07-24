@@ -3,14 +3,15 @@ import { prisma } from "@/lib/db";
 import { RestaurantCard } from "@/components/restaurant-card";
 import { RestaurantFilters } from "@/components/restaurant-filters";
 import { parseCuisineTags } from "@/lib/restaurants";
-import { CITY_NAMES } from "@/lib/cities";
+import { resolveRestaurantQuery } from "@/lib/cities";
 
 type Props = {
   searchParams: Promise<{ q?: string; cuisine?: string; city?: string }>;
 };
 
 export default async function RestaurantsPage({ searchParams }: Props) {
-  const { q = "", cuisine = "", city = "" } = await searchParams;
+  const { q: rawQ = "", cuisine = "", city = "" } = await searchParams;
+  const { q, city: cityFilter } = resolveRestaurantQuery({ q: rawQ, city });
   const restaurants = await prisma.restaurant.findMany({
     where: { isActive: true },
     orderBy: [{ city: "asc" }, { rating: "desc" }, { name: "asc" }],
@@ -19,8 +20,6 @@ export default async function RestaurantsPage({ searchParams }: Props) {
   const allCuisines = Array.from(
     new Set(restaurants.flatMap((r) => parseCuisineTags(r.cuisineTags))),
   ).sort();
-
-  const cityFilter = CITY_NAMES.find((c) => c.toLowerCase() === city.toLowerCase()) || "";
 
   const filtered = restaurants.filter((r) => {
     const tags = parseCuisineTags(r.cuisineTags);
