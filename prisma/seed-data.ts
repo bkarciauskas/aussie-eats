@@ -446,6 +446,45 @@ export const restaurants: RestaurantSeed[] = [
       },
     ]),
   },
+  {
+    name: "South Yarra Sushi Lab",
+    slug: "south-yarra-sushi-lab",
+    description: "Precision rolls and chirashi near Chapel Street.",
+    image: "/images/restaurants/sushi.jpg",
+    cuisineTags: ["Sushi", "Japanese", "Seafood"],
+    city: "Melbourne",
+    suburb: "South Yarra",
+    lat: -37.8385,
+    lng: 144.992,
+    deliveryFeeCents: 500,
+    minOrderCents: 2200,
+    rating: 4.8,
+    phone: "+61 3 9000 3303",
+    categories: cats([
+      {
+        name: "Rolls",
+        items: [
+          { name: "Salmon avocado roll", description: "8 pieces.", priceCents: 1650, image: "/images/food/sushi.jpg" },
+          { name: "Crispy prawn roll", description: "Tempura prawn, eel sauce.", priceCents: 1850 },
+          { name: "Spicy tuna roll", description: "Chilli mayo.", priceCents: 1750 },
+        ],
+      },
+      {
+        name: "Bowls",
+        items: [
+          { name: "Chirashi bowl", description: "Chef’s assortment over sushi rice.", priceCents: 2690 },
+          { name: "Chicken katsu don", description: "Crumbed chicken, egg.", priceCents: 2190 },
+        ],
+      },
+      {
+        name: "Sides",
+        items: [
+          { name: "Miso soup", description: "Wakame, tofu.", priceCents: 450 },
+          { name: "Edamame", description: "Sea salt.", priceCents: 600 },
+        ],
+      },
+    ]),
+  },
 
   // —— Brisbane ——
   {
@@ -523,6 +562,45 @@ export const restaurants: RestaurantSeed[] = [
         items: [
           { name: "Elote corn", description: "Cotija, chilli mayo.", priceCents: 800 },
           { name: "Chips & guac", description: "Fresh avocado.", priceCents: 900 },
+        ],
+      },
+    ]),
+  },
+  {
+    name: "Paddington Pie & Pint",
+    slug: "paddington-pie-pint",
+    description: "Pub classics and wood-fired pizzas in Paddington.",
+    image: "/images/restaurants/pizza.jpg",
+    cuisineTags: ["Pizza", "Pub food", "Casual"],
+    city: "Brisbane",
+    suburb: "Paddington",
+    lat: -27.4602,
+    lng: 152.9995,
+    deliveryFeeCents: 450,
+    minOrderCents: 1800,
+    rating: 4.5,
+    phone: "+61 7 9000 3303",
+    categories: cats([
+      {
+        name: "Pizza",
+        items: [
+          { name: "Margherita", description: "Tomato, mozzarella, basil.", priceCents: 1890, image: "/images/food/pizza.jpg" },
+          { name: "Meat lovers", description: "Ham, salami, bacon.", priceCents: 2290 },
+          { name: "BBQ chicken", description: "Smoky BBQ, red onion.", priceCents: 2190 },
+        ],
+      },
+      {
+        name: "Pub plates",
+        items: [
+          { name: "Chicken parmi", description: "Ham, cheese, chips, salad.", priceCents: 2490 },
+          { name: "Beef pie", description: "Pepper gravy, mash.", priceCents: 1890 },
+        ],
+      },
+      {
+        name: "Sides",
+        items: [
+          { name: "Loaded wedges", description: "Sour cream, sweet chilli.", priceCents: 1100 },
+          { name: "Garden salad", description: "House dressing.", priceCents: 900 },
         ],
       },
     ]),
@@ -610,6 +688,45 @@ export const restaurants: RestaurantSeed[] = [
       },
     ]),
   },
+  {
+    name: "Leederville Burger Joint",
+    slug: "leederville-burger-joint",
+    description: "Smash burgers and shakes on Oxford Street.",
+    image: "/images/restaurants/burger.jpg",
+    cuisineTags: ["Burgers", "American", "Fast food"],
+    city: "Perth",
+    suburb: "Leederville",
+    lat: -31.9365,
+    lng: 115.8415,
+    deliveryFeeCents: 450,
+    minOrderCents: 1500,
+    rating: 4.4,
+    phone: "+61 8 9000 3303",
+    categories: cats([
+      {
+        name: "Burgers",
+        items: [
+          { name: "Classic smash", description: "Double beef, cheddar, pickles.", priceCents: 1890, image: "/images/food/burger.jpg" },
+          { name: "Bacon jam", description: "Bacon jam, Swiss, aioli.", priceCents: 2190 },
+          { name: "Plant smash", description: "Plant patty, vegan cheese.", priceCents: 1990 },
+        ],
+      },
+      {
+        name: "Sides",
+        items: [
+          { name: "Fries", description: "Sea salt.", priceCents: 650 },
+          { name: "Onion rings", description: "Beer-battered.", priceCents: 750 },
+        ],
+      },
+      {
+        name: "Shakes",
+        items: [
+          { name: "Vanilla shake", description: "Thick and cold.", priceCents: 750 },
+          { name: "Chocolate shake", description: "Dutch cocoa.", priceCents: 750 },
+        ],
+      },
+    ]),
+  },
 
   // —— Adelaide ——
   {
@@ -693,6 +810,45 @@ export const restaurants: RestaurantSeed[] = [
       },
     ]),
   },
+  {
+    name: "Rundle Street Thai",
+    slug: "rundle-street-thai",
+    description: "Fragrant curries and noodle woks on Rundle Street.",
+    image: "/images/restaurants/thai.jpg",
+    cuisineTags: ["Thai", "Asian", "Noodles"],
+    city: "Adelaide",
+    suburb: "Adelaide CBD",
+    lat: -34.9225,
+    lng: 138.6065,
+    deliveryFeeCents: 400,
+    minOrderCents: 1800,
+    rating: 4.5,
+    phone: "+61 8 9000 5505",
+    categories: cats([
+      {
+        name: "Starters",
+        items: [
+          { name: "Chicken satay", description: "Peanut sauce.", priceCents: 1400 },
+          { name: "Spring rolls", description: "Sweet chilli.", priceCents: 1100 },
+        ],
+      },
+      {
+        name: "Mains",
+        items: [
+          { name: "Pad Thai", description: "Prawn or tofu.", priceCents: 1890, image: "/images/food/thai.jpg" },
+          { name: "Green curry", description: "Chicken, Thai basil, rice.", priceCents: 2190 },
+          { name: "Basil chilli stir-fry", description: "Minced pork, jasmine rice.", priceCents: 1990 },
+        ],
+      },
+      {
+        name: "Drinks",
+        items: [
+          { name: "Thai iced tea", description: "Sweetened.", priceCents: 550 },
+          { name: "Coconut water", description: "Chilled.", priceCents: 450 },
+        ],
+      },
+    ]),
+  },
 
   // —— Hobart ——
   {
@@ -771,6 +927,45 @@ export const restaurants: RestaurantSeed[] = [
           { name: "Miso soup", description: "Wakame, tofu.", priceCents: 450 },
           { name: "Edamame", description: "Sea salt.", priceCents: 600 },
           { name: "Gyoza (5)", description: "Pan-fried.", priceCents: 1100 },
+        ],
+      },
+    ]),
+  },
+  {
+    name: "North Hobart Grill House",
+    slug: "north-hobart-grill-house",
+    description: "Char-grilled burgers and steaks on Elizabeth Street.",
+    image: "/images/restaurants/burger.jpg",
+    cuisineTags: ["Burgers", "Grill", "Casual"],
+    city: "Hobart",
+    suburb: "North Hobart",
+    lat: -42.8695,
+    lng: 147.3155,
+    deliveryFeeCents: 450,
+    minOrderCents: 1600,
+    rating: 4.5,
+    phone: "+61 3 9000 7707",
+    categories: cats([
+      {
+        name: "Burgers",
+        items: [
+          { name: "Harbour smash", description: "Double beef, cheddar, pickles.", priceCents: 1890, image: "/images/food/burger.jpg" },
+          { name: "Bacon cheddar", description: "Crispy bacon, onion jam.", priceCents: 2190 },
+          { name: "Mushroom Swiss", description: "Garlic mushrooms, Swiss.", priceCents: 2090 },
+        ],
+      },
+      {
+        name: "Grill",
+        items: [
+          { name: "Rump steak", description: "Chips, salad, pepper gravy.", priceCents: 2890 },
+          { name: "Chicken schnitzel", description: "Parmy option, chips.", priceCents: 2490 },
+        ],
+      },
+      {
+        name: "Sides",
+        items: [
+          { name: "Thick-cut chips", description: "Sea salt.", priceCents: 650 },
+          { name: "Onion rings", description: "Beer-battered.", priceCents: 750 },
         ],
       },
     ]),
