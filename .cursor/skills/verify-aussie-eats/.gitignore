@@ -1,0 +1,7 @@
+evidence/
+.run/
+.tools/
+node_modules/
+*.png
+*.jpg
+*.webp
