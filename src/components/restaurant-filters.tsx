@@ -32,7 +32,9 @@ export function RestaurantFilters({
     };
   }
 
-  function apply(next: { q?: string; cuisine?: string; city?: string } = {}) {
+  function apply(
+    next: { q?: string; cuisine?: string; city?: string; explicitCity?: boolean } = {},
+  ) {
     const current = readForm();
     const params = new URLSearchParams(searchParams.toString());
     const cuisine = next.cuisine ?? current.cuisine;
@@ -40,6 +42,7 @@ export function RestaurantFilters({
     const resolved = resolveRestaurantQuery({
       q: next.q ?? current.q,
       city: next.city ?? current.city,
+      explicitCity: next.explicitCity,
     });
     if (resolved.q) params.set("q", resolved.q);
     else params.delete("q");
@@ -76,7 +79,7 @@ export function RestaurantFilters({
           key={`city-${initialCity}`}
           name="city"
           defaultValue={initialCity}
-          onChange={() => apply()}
+          onChange={() => apply({ explicitCity: true })}
           disabled={pending}
         >
           <option value="">All cities</option>

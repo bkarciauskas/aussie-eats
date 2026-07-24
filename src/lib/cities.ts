@@ -78,12 +78,19 @@ export const CITY_NAMES = DEMO_CITIES.map((c) => c.label);
 export function resolveRestaurantQuery(input: {
   q?: string;
   city?: string;
+  /** When true, use the city dropdown and do not promote q to city. */
+  explicitCity?: boolean;
 }): { q: string; city: string } {
   const rawQ = (input.q || "").trim();
+  const fromCity = findDemoCity(input.city);
+
+  if (input.explicitCity) {
+    return { q: findDemoCity(rawQ) ? "" : rawQ, city: fromCity?.label || "" };
+  }
+
   const fromQ = findDemoCity(rawQ);
   if (fromQ) {
     return { q: "", city: fromQ.label };
   }
-  const fromCity = findDemoCity(input.city);
   return { q: rawQ, city: fromCity?.label || "" };
 }
