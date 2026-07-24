@@ -62,7 +62,8 @@ npm run db:reset
 - [ ] Unauthenticated browse of `/restaurants` and a menu works
 - [ ] Home hero search and header search both land on `/restaurants?q=…` (with `city` when a demo pin is set)
 - [ ] Demo city picker sets location for the session (localStorage); city filter on `/restaurants` works
-- [ ] Seed includes restaurants in Sydney, Melbourne, Brisbane, Perth, Adelaide, and Hobart
+- [ ] Seed includes restaurants in Sydney, Melbourne, Brisbane, Perth, Adelaide, and Hobart (at least 3 per city outside Sydney)
+
 - [ ] Cart works without login; checkout requires login
 - [ ] Placing an order creates status `pending`, clears cart, shows in `/orders`
 - [ ] AUD formatting (`$x.xx`) and AU address fields (suburb / NSW / postcode / +61) appear
