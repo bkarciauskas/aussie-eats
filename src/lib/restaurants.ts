@@ -20,6 +20,23 @@ export const SYDNEY_DEMO = DEMO_CITIES[0];
 
 export { DEMO_CITIES, type DemoCity };
 
+export type Origin = { lat: number; lng: number };
+
+/** Parse and validate a lat/lng origin coming from URL search params. */
+export function parseOrigin(
+  lat?: string | null,
+  lng?: string | null,
+): Origin | null {
+  if (lat == null || lng == null || lat === "" || lng === "") return null;
+  const parsedLat = Number(lat);
+  const parsedLng = Number(lng);
+  if (!Number.isFinite(parsedLat) || !Number.isFinite(parsedLng)) return null;
+  if (parsedLat < -90 || parsedLat > 90 || parsedLng < -180 || parsedLng > 180) {
+    return null;
+  }
+  return { lat: parsedLat, lng: parsedLng };
+}
+
 /** Haversine distance in km */
 export function distanceKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const toRad = (d: number) => (d * Math.PI) / 180;
