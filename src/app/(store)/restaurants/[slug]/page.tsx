@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { formatAUD } from "@/lib/money";
 import { parseCuisineTags } from "@/lib/restaurants";
 import { AddToCartButton } from "@/components/add-to-cart-button";
+import { RestaurantLocationMap } from "@/components/restaurant-location-map";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -90,6 +91,22 @@ export default async function RestaurantDetailPage({ params }: Props) {
             </ul>
           </section>
         ))}
+
+        <section>
+          <h2 className="font-display text-2xl text-[var(--ae-green)]">Where to find us</h2>
+          <p className="mt-1 text-sm text-[var(--ae-ink-muted)]">
+            {restaurant.suburb}, {restaurant.city}
+          </p>
+          <div className="mt-4">
+            <RestaurantLocationMap
+              lat={restaurant.lat}
+              lng={restaurant.lng}
+              name={restaurant.name}
+              suburb={restaurant.suburb}
+              city={restaurant.city}
+            />
+          </div>
+        </section>
       </div>
     </div>
   );
