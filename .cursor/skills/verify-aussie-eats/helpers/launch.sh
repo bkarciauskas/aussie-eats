@@ -12,10 +12,15 @@ mkdir -p "$RUN_DIR"
 if [[ -f "$RUN_DIR/pid" ]]; then
   old_pid="$(cat "$RUN_DIR/pid")"
   if kill -0 "$old_pid" 2>/dev/null; then
-    echo "verify instance already running (pid=$old_pid port=$(cat "$RUN_DIR/port" 2>/dev/null || echo '?'))"
-    exit 0
+    if "$SKILL_DIR/helpers/doctor.sh" >/dev/null 2>&1; then
+      echo "verify instance already running (pid=$old_pid port=$(cat "$RUN_DIR/port" 2>/dev/null || echo '?'))"
+      exit 0
+    fi
+    echo "verify instance unhealthy (pid=$old_pid); stopping before relaunch" >&2
+    "$(dirname "$0")/cleanup.sh" || true
+  else
+    rm -f "$RUN_DIR/pid" "$RUN_DIR/port" "$RUN_DIR/host" "$RUN_DIR/pgid" "$RUN_DIR/listener_pid"
   fi
-  rm -f "$RUN_DIR/pid" "$RUN_DIR/port" "$RUN_DIR/host" "$RUN_DIR/pgid" "$RUN_DIR/listener_pid"
 fi
 
 if lsof -nP -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
