@@ -23,8 +23,8 @@ function FitBounds({
   const map = useMap();
   useEffect(() => {
     if (!map) return;
-    const points = restaurants.map((r) => ({ lat: r.lat, lng: r.lng }));
-    if (origin) points.push(origin);
+    const points = restaurants.map((r) => ({ lat: r.lng, lng: r.lat }));
+    if (origin) points.push({ lat: origin.lng, lng: origin.lat });
     if (points.length === 0) return;
     if (points.length === 1) {
       map.setCenter(points[0]);
@@ -50,7 +50,11 @@ export function RestaurantsMap({
   onActivate: (id: string | null) => void;
 }) {
   const active = restaurants.find((r) => r.id === activeId) ?? null;
-  const defaultCenter = origin ?? (restaurants[0] ? { lat: restaurants[0].lat, lng: restaurants[0].lng } : SYDNEY);
+  const defaultCenter = origin
+    ? { lat: origin.lng, lng: origin.lat }
+    : restaurants[0]
+      ? { lat: restaurants[0].lng, lng: restaurants[0].lat }
+      : SYDNEY;
 
   return (
     <div className="h-[380px] w-full overflow-hidden rounded-2xl border border-[var(--ae-line)]">
@@ -67,7 +71,7 @@ export function RestaurantsMap({
 
         {origin ? (
           <Marker
-            position={origin}
+            position={{ lat: origin.lng, lng: origin.lat }}
             title="Your location"
             icon={{
               path: google.maps.SymbolPath.CIRCLE,
@@ -83,7 +87,7 @@ export function RestaurantsMap({
         {restaurants.map((r) => (
           <Marker
             key={r.id}
-            position={{ lat: r.lat, lng: r.lng }}
+            position={{ lat: r.lng, lng: r.lat }}
             title={r.name}
             onClick={() => onActivate(r.id)}
           />
@@ -91,7 +95,7 @@ export function RestaurantsMap({
 
         {active ? (
           <InfoWindow
-            position={{ lat: active.lat, lng: active.lng }}
+            position={{ lat: active.lng, lng: active.lat }}
             onCloseClick={() => onActivate(null)}
           >
             <div className="max-w-[220px] text-[var(--ae-ink)]">

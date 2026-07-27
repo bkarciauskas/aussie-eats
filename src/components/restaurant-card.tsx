@@ -51,7 +51,7 @@ export function RestaurantCard({
           <span>{city ? `${suburb}, ${city}` : suburb}</span>
           <span>{formatAUD(deliveryFeeCents)} delivery</span>
           {distanceKm != null ? <span>{distanceKm.toFixed(1)} km</span> : null}
-          <span className={isOpen ? "text-[var(--ae-green)]" : "text-[var(--ae-danger)]"}>
+          <span className={isOpen ? "text-[var(--ae-danger)]" : "text-[var(--ae-green)]"}>
             {isOpen ? "Open" : "Closed"}
           </span>
         </div>

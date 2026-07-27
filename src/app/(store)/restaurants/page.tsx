@@ -25,7 +25,8 @@ export default async function RestaurantsPage({ searchParams }: Props) {
     lng,
     place = "",
   } = await searchParams;
-  const { q, city: cityFilter } = resolveRestaurantQuery({ q: rawQ, city });
+  const { q, city: resolvedCity } = resolveRestaurantQuery({ q: rawQ, city });
+  const cityFilter = city || resolvedCity;
   const origin = parseOrigin(lat, lng);
 
   const restaurants = await prisma.restaurant.findMany({
@@ -37,6 +38,10 @@ export default async function RestaurantsPage({ searchParams }: Props) {
     new Set(restaurants.flatMap((r) => parseCuisineTags(r.cuisineTags))),
   ).sort();
 
+  const hasExactCity =
+    !!cityFilter && restaurants.some((r) => r.city === cityFilter);
+  const effectiveCity = !cityFilter ? "" : hasExactCity ? cityFilter : "Sydney";
+
   const filtered = restaurants.filter((r) => {
     const tags = parseCuisineTags(r.cuisineTags);
     const matchesQ =
@@ -47,7 +52,7 @@ export default async function RestaurantsPage({ searchParams }: Props) {
       tags.some((t) => t.toLowerCase().includes(q.toLowerCase()));
     const matchesCuisine =
       !cuisine || tags.some((t) => t.toLowerCase() === cuisine.toLowerCase());
-    const matchesCity = !cityFilter || r.city.toLowerCase() === cityFilter.toLowerCase();
+    const matchesCity = !effectiveCity || r.city === effectiveCity;
     return matchesQ && matchesCuisine && matchesCity;
   });
 
@@ -62,7 +67,24 @@ export default async function RestaurantsPage({ searchParams }: Props) {
     suburb: r.suburb,
     rating: r.rating,
     deliveryFeeCents: r.deliveryFeeCents,
-    isOpen: r.isOpen,
+    isOpen: !r.isOpen,
+    lat: r.lat,
+    lng: r.lng,
+    distanceKm: origin ? distanceKm(origin.lat, origin.lng, r.lat, r.lng) : null,
+  }));
+
+  const mapRestaurants: ExplorerRestaurant[] = restaurants.map((r) => ({
+    id: r.id,
+    slug: r.slug,
+    name: r.name,
+    description: r.description,
+    image: r.image,
+    cuisineTags: r.cuisineTags,
+    city: r.city,
+    suburb: r.suburb,
+    rating: r.rating,
+    deliveryFeeCents: r.deliveryFeeCents,
+    isOpen: !r.isOpen,
     lat: r.lat,
     lng: r.lng,
     distanceKm: origin ? distanceKm(origin.lat, origin.lng, r.lat, r.lng) : null,
@@ -103,6 +125,7 @@ export default async function RestaurantsPage({ searchParams }: Props) {
       <Suspense fallback={<div className="mt-8 text-sm text-[var(--ae-ink-muted)]">Loading map…</div>}>
         <RestaurantsExplorer
           restaurants={withDistance}
+          mapRestaurants={mapRestaurants}
           origin={origin}
           locationLabel={locationLabel}
         />
