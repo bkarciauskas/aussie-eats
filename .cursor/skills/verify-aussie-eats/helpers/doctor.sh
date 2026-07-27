@@ -38,7 +38,10 @@ if [[ -f "$RUN_DIR/pid" ]]; then
     exit 1
   fi
   # Best-effort: confirm something listens on our port (may be child of npm).
-  if ! lsof -nP -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
+  # Next may bind IPv6-only (:::$PORT); plain lsof -iTCP can miss that on some hosts.
+  if ! lsof -nP -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1 \
+    && ! lsof -nP -i6TCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1 \
+    && ! netstat -ltn 2>/dev/null | grep -Eq ":${PORT}[[:space:]]"; then
     echo "doctor: nothing listening on $PORT" >&2
     exit 1
   fi

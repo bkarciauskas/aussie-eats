@@ -118,6 +118,55 @@ async function run() {
       steps.push({ url: page.url(), hasHeading, restaurantRows: hasRow });
       passed = hasHeading && hasRow > 0;
       if (!passed) error = `assertions failed: hasHeading=${hasHeading} rows=${hasRow}`;
+    } else if (feature === "melbourne-city-browse") {
+      await page.goto(baseUrl + "/", { waitUntil: "domcontentloaded" });
+      await page.waitForFunction(() => {
+        const buttons = [...document.querySelectorAll("button")];
+        return buttons.some((b) => b.textContent?.trim() === "Melbourne" && !b.disabled);
+      });
+      await page.getByRole("button", { name: "Melbourne", exact: true }).click();
+      const browse = page.getByRole("link", { name: /Browse Melbourne restaurants/i });
+      await browse.waitFor({ state: "visible", timeout: 15000 });
+      await page.screenshot({
+        path: join(evidenceDir, "01-action-melbourne-selected.png"),
+        fullPage: true,
+      });
+      steps.push({ action: "selected Melbourne city pin" });
+      const href = await browse.getAttribute("href");
+      await browse.click();
+      try {
+        await page.waitForFunction(() => location.pathname.startsWith("/restaurants"), null, {
+          timeout: 8000,
+        });
+      } catch {
+        // Soft navigation can stall in headless; follow the browse href directly.
+        await page.goto(new URL(href || "/restaurants?city=melbourne", baseUrl).toString(), {
+          waitUntil: "domcontentloaded",
+        });
+      }
+      await page.waitForSelector("a.restaurant-row", { timeout: 15000 });
+      await page.screenshot({
+        path: join(evidenceDir, "02-result-melbourne-restaurants.png"),
+        fullPage: true,
+      });
+      const url = page.url();
+      const rows = await page.locator("a.restaurant-row h2").allTextContents();
+      const hasCity = /[?&]city=melbourne\b/i.test(url);
+      const hasHarbour = rows.some((r) => /Harbour Burger/i.test(r));
+      const melbourneOnly =
+        rows.length === 3 && rows.every((r) => /Fitzroy|Carlton|South Yarra/i.test(r));
+      steps.push({
+        result: "browsed Melbourne restaurants",
+        url,
+        rows,
+        hasCity,
+        hasHarbour,
+        melbourneOnly,
+      });
+      passed = hasCity && melbourneOnly && !hasHarbour;
+      if (!passed) {
+        error = `assertions failed: hasCity=${hasCity} melbourneOnly=${melbourneOnly} hasHarbour=${hasHarbour} rows=${JSON.stringify(rows)} url=${url}`;
+      }
     } else if (feature === "customer-login") {
       await page.goto(baseUrl + "/login", { waitUntil: "networkidle" });
       await page.locator('input[name="email"]').fill("demo@aussieeats.local");

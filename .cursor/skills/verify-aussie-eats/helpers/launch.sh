@@ -61,7 +61,10 @@ fi
 python3 - "$ROOT" "$PORT" "$RUN_DIR" <<'PY'
 import os, sys, time
 root, port, run_dir = sys.argv[1], sys.argv[2], sys.argv[3]
-log_path = os.path.join(run_dir, "log")
+# Keep the growing server log outside the Next.js project tree so webpack
+# file watching cannot thrash Fast Refresh on every stdout write.
+log_path = os.path.join("/tmp", f"aussie-eats-verify-{port}.log")
+open(os.path.join(run_dir, "log_path"), "w").write(log_path)
 
 if os.fork() > 0:
     # parent of first fork — wait briefly for pid file then exit
@@ -104,7 +107,7 @@ for _ in $(seq 1 50); do
 done
 
 if [[ ! -f "$RUN_DIR/pid" ]]; then
-  echo "failed to record daemon pid; see $RUN_DIR/log" >&2
+  echo "failed to record daemon pid; see $(cat "$RUN_DIR/log_path" 2>/dev/null || echo /tmp/aussie-eats-verify-*.log)" >&2
   exit 1
 fi
 
@@ -121,11 +124,11 @@ for _ in $(seq 1 90); do
     exit 0
   fi
   if ! kill -0 "$(cat "$RUN_DIR/pid")" 2>/dev/null; then
-    echo "launch process exited early; see $RUN_DIR/log" >&2
+    echo "launch process exited early; see $(cat "$RUN_DIR/log_path" 2>/dev/null || echo /tmp/aussie-eats-verify-*.log)" >&2
     exit 1
   fi
   sleep 1
 done
 
-echo "timed out waiting for server; see $RUN_DIR/log" >&2
+echo "timed out waiting for server; see $(cat "$RUN_DIR/log_path" 2>/dev/null || echo /tmp/aussie-eats-verify-*.log)" >&2
 exit 1

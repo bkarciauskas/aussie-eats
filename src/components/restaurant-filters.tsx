@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useRef, useTransition } from "react";
-import { CITY_NAMES, resolveRestaurantQuery } from "@/lib/cities";
+import { DEMO_CITIES, resolveRestaurantQuery } from "@/lib/cities";
 
 export function RestaurantFilters({
   cuisines,
@@ -84,9 +84,9 @@ export function RestaurantFilters({
           disabled={pending}
         >
           <option value="">All cities</option>
-          {CITY_NAMES.map((c) => (
-            <option key={c} value={c}>
-              {c}
+          {DEMO_CITIES.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.label}
             </option>
           ))}
         </select>

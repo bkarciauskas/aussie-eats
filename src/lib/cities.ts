@@ -94,3 +94,25 @@ export function resolveRestaurantQuery(input: {
   }
   return { q: rawQ, city: fromCity?.id || input.city?.trim() || "" };
 }
+
+/** Display label for a city id/label query param (DB stores labels like "Melbourne"). */
+export function demoCityLabel(cityFilter: string | null | undefined): string {
+  if (!cityFilter) return "";
+  return findDemoCity(cityFilter)?.label || cityFilter.trim();
+}
+
+/**
+ * Match a restaurant's stored city label against a URL/filter value.
+ * Accepts either stable ids (`melbourne`) or labels (`Melbourne`).
+ */
+export function matchesRestaurantCity(
+  restaurantCity: string,
+  cityFilter: string | null | undefined,
+): boolean {
+  if (!cityFilter) return true;
+  const wanted = findDemoCity(cityFilter);
+  if (wanted) {
+    return restaurantCity.toLowerCase() === wanted.label.toLowerCase();
+  }
+  return restaurantCity.toLowerCase() === cityFilter.trim().toLowerCase();
+}
