@@ -38,10 +38,11 @@ function RestaurantSearchForm({
     // Typing a city name (e.g. "melbourne") should switch city, not fight the demo pin.
     const resolved = resolveRestaurantQuery({
       q: rawQ,
-      city: searchParams.get("city") || location?.label || "",
+      city: searchParams.get("city") || location?.suburb || location?.label || "",
     });
     if (resolved.q) params.set("q", resolved.q);
-    if (resolved.city) params.set("city", resolved.city);
+    const cityOut = resolved.city || rawQ || searchParams.get("city") || "";
+    if (cityOut) params.set("city", cityOut);
 
     const qs = params.toString();
     startTransition(() => {

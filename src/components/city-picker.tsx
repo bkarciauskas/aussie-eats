@@ -36,7 +36,9 @@ export function CityPicker({
         <p className="mt-3 text-sm text-[var(--ae-ink-muted)]">
           Showing demo pin for <strong>{location.label}</strong> ·{" "}
           <Link
-            href={`/restaurants?city=${encodeURIComponent(location.label)}`}
+            href={`/restaurants?city=${encodeURIComponent(
+              DEMO_CITIES.find((c) => c.label === location.label)?.id || location.label,
+            )}`}
             className="underline"
           >
             Browse {location.label} restaurants

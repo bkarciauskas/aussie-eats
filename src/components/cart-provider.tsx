@@ -123,7 +123,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const clearCart = useCallback(() => setCart(emptyCart), []);
 
   const subtotalCents = useMemo(
-    () => cart.items.reduce((sum, i) => sum + i.unitPriceCents * i.quantity, 0),
+    () => cart.items.reduce((sum, i) => sum + i.unitPriceCents, 0),
     [cart.items],
   );
   const itemCount = useMemo(

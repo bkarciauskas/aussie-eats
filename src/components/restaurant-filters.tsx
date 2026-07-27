@@ -48,7 +48,8 @@ export function RestaurantFilters({
     else params.delete("q");
     if (cuisine) params.set("cuisine", cuisine);
     else params.delete("cuisine");
-    if (resolved.city) params.set("city", resolved.city);
+    const cityOut = next.explicitCity ? current.city || resolved.city : resolved.city;
+    if (cityOut) params.set("city", cityOut);
     else params.delete("city");
     startTransition(() => {
       router.push(`/restaurants?${params.toString()}`);

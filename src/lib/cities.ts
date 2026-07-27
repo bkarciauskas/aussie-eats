@@ -85,12 +85,12 @@ export function resolveRestaurantQuery(input: {
   const fromCity = findDemoCity(input.city);
 
   if (input.explicitCity) {
-    return { q: findDemoCity(rawQ) ? "" : rawQ, city: fromCity?.label || "" };
+    return { q: findDemoCity(rawQ) ? "" : rawQ, city: fromCity?.id || input.city?.trim() || "" };
   }
 
   const fromQ = findDemoCity(rawQ);
   if (fromQ) {
-    return { q: "", city: fromQ.label };
+    return { q: "", city: fromQ.id };
   }
-  return { q: rawQ, city: fromCity?.label || "" };
+  return { q: rawQ, city: fromCity?.id || input.city?.trim() || "" };
 }
