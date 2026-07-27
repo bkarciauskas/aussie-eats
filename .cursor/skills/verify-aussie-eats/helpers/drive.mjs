@@ -198,6 +198,62 @@ async function run() {
       steps.push({ url, navOrders });
       passed = /\/admin\/?$/.test(new URL(url).pathname) && navOrders > 0;
       if (!passed) error = `admin dashboard assertions failed url=${url}`;
+    } else if (feature === "restaurant-map-pins") {
+      await page.goto(baseUrl + "/restaurants?city=melbourne", { waitUntil: "domcontentloaded" });
+      await page.waitForSelector("[data-map-pin-count]", { timeout: 20000 });
+      await page.waitForSelector("a.restaurant-row", { timeout: 15000 });
+      await page.screenshot({
+        path: join(evidenceDir, "01-melbourne-list-and-map.png"),
+        fullPage: true,
+      });
+      const listNames = (await page.locator("a.restaurant-row h2").allTextContents()).map((s) =>
+        s.trim(),
+      );
+      const pinCount = Number(await page.locator("[data-map-pin-count]").getAttribute("data-map-pin-count"));
+      const pinNames = ((await page.locator("[data-map-pin-count]").getAttribute("data-map-pin-names")) || "")
+        .split("|")
+        .filter(Boolean);
+      const melbourneList =
+        listNames.length === 3 &&
+        listNames.every((r) => /Fitzroy|Carlton|South Yarra/i.test(r)) &&
+        !listNames.some((r) => /Harbour Burger/i.test(r));
+      const pinsMatchList =
+        pinCount === listNames.length &&
+        pinNames.length === listNames.length &&
+        listNames.every((n) => pinNames.includes(n));
+      steps.push({
+        action: "melbourne city filter",
+        listNames,
+        pinCount,
+        pinNames,
+        melbourneList,
+        pinsMatchList,
+      });
+
+      await page.goto(baseUrl + "/restaurants/harbour-burger-co", {
+        waitUntil: "domcontentloaded",
+      });
+      await page.waitForSelector("[data-map-lat]", { timeout: 20000 });
+      await page.screenshot({
+        path: join(evidenceDir, "02-harbour-burger-detail-map.png"),
+        fullPage: true,
+      });
+      const mapLat = Number(await page.locator("[data-map-lat]").getAttribute("data-map-lat"));
+      const mapLng = Number(await page.locator("[data-map-lng]").getAttribute("data-map-lng"));
+      // Surry Hills seed: lat -33.883, lng 151.214 — reject swapped coords.
+      const detailCoordsOk =
+        mapLat < -30 && mapLat > -40 && mapLng > 140 && mapLng < 160 && Math.abs(mapLat - -33.883) < 0.05;
+      steps.push({
+        result: "harbour burger detail map",
+        mapLat,
+        mapLng,
+        detailCoordsOk,
+        url: page.url(),
+      });
+      passed = melbourneList && pinsMatchList && detailCoordsOk;
+      if (!passed) {
+        error = `assertions failed: melbourneList=${melbourneList} pinsMatchList=${pinsMatchList} detailCoordsOk=${detailCoordsOk} list=${JSON.stringify(listNames)} pins=${JSON.stringify(pinNames)} lat=${mapLat} lng=${mapLng}`;
+      }
     } else if (feature === "place-order") {
       throw new Error(
         "place-order is mapped but multi-step; drive manually per features/place-order.md or extend drive.mjs",

@@ -50,14 +50,15 @@ export function RestaurantsMap({
   onActivate: (id: string | null) => void;
 }) {
   const active = restaurants.find((r) => r.id === activeId) ?? null;
-  const defaultCenter = origin
-    ? origin
-    : restaurants[0]
-      ? { lat: restaurants[0].lat, lng: restaurants[0].lng }
-      : SYDNEY;
+  const defaultCenter =
+    origin ?? (restaurants[0] ? { lat: restaurants[0].lat, lng: restaurants[0].lng } : SYDNEY);
 
   return (
-    <div className="h-[380px] w-full overflow-hidden rounded-2xl border border-[var(--ae-line)]">
+    <div
+      className="h-[380px] w-full overflow-hidden rounded-2xl border border-[var(--ae-line)]"
+      data-map-pin-count={restaurants.length}
+      data-map-pin-names={restaurants.map((r) => r.name).join("|")}
+    >
       <Map
         defaultCenter={defaultCenter}
         defaultZoom={12}

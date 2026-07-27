@@ -19,7 +19,12 @@ export function RestaurantLocationMap({
   return (
     <MapProvider>
       {hasMapsKey ? (
-        <div className="h-[260px] w-full overflow-hidden rounded-2xl border border-[var(--ae-line)]">
+        <div
+          className="h-[260px] w-full overflow-hidden rounded-2xl border border-[var(--ae-line)]"
+          data-map-lat={lat}
+          data-map-lng={lng}
+          data-map-name={name}
+        >
           <Map
             defaultCenter={{ lat, lng }}
             defaultZoom={15}
