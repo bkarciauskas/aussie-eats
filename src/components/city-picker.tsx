@@ -1,8 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useLocation } from "@/components/location-provider";
-import { DEMO_CITIES } from "@/lib/cities";
+import { DEMO_CITIES, findDemoCity } from "@/lib/cities";
 
 export function CityPicker({
   className = "",
@@ -12,6 +11,12 @@ export function CityPicker({
   showBrowseLink?: boolean;
 }) {
   const { location, setCityLocation, hydrated } = useLocation();
+  const browseCity = location ? findDemoCity(location.label) : undefined;
+  const browseHref = browseCity
+    ? `/restaurants?city=${encodeURIComponent(browseCity.id)}`
+    : location
+      ? `/restaurants?city=${encodeURIComponent(location.label)}`
+      : "/restaurants";
 
   return (
     <div className={className}>
@@ -35,14 +40,9 @@ export function CityPicker({
       {showBrowseLink && location ? (
         <p className="mt-3 text-sm text-[var(--ae-ink-muted)]">
           Showing demo pin for <strong>{location.label}</strong> ·{" "}
-          <Link
-            href={`/restaurants?city=${encodeURIComponent(
-              DEMO_CITIES.find((c) => c.label === location.label)?.id || location.label,
-            )}`}
-            className="underline"
-          >
+          <a href={browseHref} className="underline">
             Browse {location.label} restaurants
-          </Link>
+          </a>
         </p>
       ) : null}
     </div>

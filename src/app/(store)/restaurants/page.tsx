@@ -3,7 +3,11 @@ import { prisma } from "@/lib/db";
 import { RestaurantFilters } from "@/components/restaurant-filters";
 import { RestaurantsExplorer, type ExplorerRestaurant } from "@/components/restaurants-explorer";
 import { distanceKm, parseCuisineTags, parseOrigin } from "@/lib/restaurants";
-import { resolveRestaurantQuery } from "@/lib/cities";
+import {
+  demoCityLabel,
+  matchesRestaurantCity,
+  resolveRestaurantQuery,
+} from "@/lib/cities";
 
 type Props = {
   searchParams: Promise<{
@@ -25,8 +29,9 @@ export default async function RestaurantsPage({ searchParams }: Props) {
     lng,
     place = "",
   } = await searchParams;
-  const { q, city: resolvedCity } = resolveRestaurantQuery({ q: rawQ, city });
-  const cityFilter = city || resolvedCity;
+  // Prefer the resolved city id so labels and ids both filter correctly.
+  const { q, city: cityFilter } = resolveRestaurantQuery({ q: rawQ, city });
+  const cityLabel = demoCityLabel(cityFilter);
   const origin = parseOrigin(lat, lng);
 
   const restaurants = await prisma.restaurant.findMany({
@@ -38,10 +43,6 @@ export default async function RestaurantsPage({ searchParams }: Props) {
     new Set(restaurants.flatMap((r) => parseCuisineTags(r.cuisineTags))),
   ).sort();
 
-  const hasExactCity =
-    !!cityFilter && restaurants.some((r) => r.city === cityFilter);
-  const effectiveCity = !cityFilter ? "" : hasExactCity ? cityFilter : "Sydney";
-
   const filtered = restaurants.filter((r) => {
     const tags = parseCuisineTags(r.cuisineTags);
     const matchesQ =
@@ -52,7 +53,7 @@ export default async function RestaurantsPage({ searchParams }: Props) {
       tags.some((t) => t.toLowerCase().includes(q.toLowerCase()));
     const matchesCuisine =
       !cuisine || tags.some((t) => t.toLowerCase() === cuisine.toLowerCase());
-    const matchesCity = !effectiveCity || r.city === effectiveCity;
+    const matchesCity = matchesRestaurantCity(r.city, cityFilter);
     return matchesQ && matchesCuisine && matchesCity;
   });
 
@@ -67,7 +68,7 @@ export default async function RestaurantsPage({ searchParams }: Props) {
     suburb: r.suburb,
     rating: r.rating,
     deliveryFeeCents: r.deliveryFeeCents,
-    isOpen: !r.isOpen,
+    isOpen: r.isOpen,
     lat: r.lat,
     lng: r.lng,
     distanceKm: origin ? distanceKm(origin.lat, origin.lng, r.lat, r.lng) : null,
@@ -84,7 +85,7 @@ export default async function RestaurantsPage({ searchParams }: Props) {
     suburb: r.suburb,
     rating: r.rating,
     deliveryFeeCents: r.deliveryFeeCents,
-    isOpen: !r.isOpen,
+    isOpen: r.isOpen,
     lat: r.lat,
     lng: r.lng,
     distanceKm: origin ? distanceKm(origin.lat, origin.lng, r.lat, r.lng) : null,
@@ -107,7 +108,7 @@ export default async function RestaurantsPage({ searchParams }: Props) {
             {origin
               ? `Sorted by distance from ${locationLabel}`
               : cityFilter
-                ? `${cityFilter} · filter or search across seeded suburbs`
+                ? `${cityLabel} · filter or search across seeded suburbs`
                 : "Sydney, Melbourne, Brisbane, Perth, Adelaide, Hobart"}
           </p>
         </div>
