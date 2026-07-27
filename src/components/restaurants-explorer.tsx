@@ -26,17 +26,14 @@ export type ExplorerRestaurant = {
 
 export function RestaurantsExplorer({
   restaurants,
-  mapRestaurants,
   origin,
   locationLabel,
 }: {
   restaurants: ExplorerRestaurant[];
-  mapRestaurants?: ExplorerRestaurant[];
   origin: Origin | null;
   locationLabel?: string;
 }) {
   const [activeId, setActiveId] = useState<string | null>(null);
-  const pins = mapRestaurants ?? restaurants;
 
   return (
     <MapProvider>
@@ -45,7 +42,7 @@ export function RestaurantsExplorer({
 
         {hasMapsKey ? (
           <RestaurantsMap
-            restaurants={pins}
+            restaurants={restaurants}
             origin={origin}
             activeId={activeId}
             onActivate={setActiveId}
