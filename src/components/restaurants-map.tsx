@@ -54,7 +54,11 @@ export function RestaurantsMap({
     origin ?? (restaurants[0] ? { lat: restaurants[0].lat, lng: restaurants[0].lng } : SYDNEY);
 
   return (
-    <div className="h-[380px] w-full overflow-hidden rounded-2xl border border-[var(--ae-line)]">
+    <div
+      className="h-[380px] w-full overflow-hidden rounded-2xl border border-[var(--ae-line)]"
+      data-map-pin-count={restaurants.length}
+      data-map-pin-names={restaurants.map((r) => r.name).join("|")}
+    >
       <Map
         defaultCenter={defaultCenter}
         defaultZoom={12}
