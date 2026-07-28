@@ -21,14 +21,14 @@ export function RestaurantLocationMap({
       {hasMapsKey ? (
         <div className="h-[260px] w-full overflow-hidden rounded-2xl border border-[var(--ae-line)]">
           <Map
-            defaultCenter={{ lat: lng, lng: lat }}
+            defaultCenter={{ lat, lng }}
             defaultZoom={15}
             gestureHandling="cooperative"
             disableDefaultUI
             clickableIcons={false}
             style={{ width: "100%", height: "100%" }}
           >
-            <Marker position={{ lat: lng, lng: lat }} title={name} />
+            <Marker position={{ lat, lng }} title={name} />
           </Map>
         </div>
       ) : (
