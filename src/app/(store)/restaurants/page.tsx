@@ -74,23 +74,6 @@ export default async function RestaurantsPage({ searchParams }: Props) {
     distanceKm: origin ? distanceKm(origin.lat, origin.lng, r.lat, r.lng) : null,
   }));
 
-  const mapRestaurants: ExplorerRestaurant[] = restaurants.map((r) => ({
-    id: r.id,
-    slug: r.slug,
-    name: r.name,
-    description: r.description,
-    image: r.image,
-    cuisineTags: r.cuisineTags,
-    city: r.city,
-    suburb: r.suburb,
-    rating: r.rating,
-    deliveryFeeCents: r.deliveryFeeCents,
-    isOpen: r.isOpen,
-    lat: r.lat,
-    lng: r.lng,
-    distanceKm: origin ? distanceKm(origin.lat, origin.lng, r.lat, r.lng) : null,
-  }));
-
   if (origin) {
     withDistance.sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity));
   }
@@ -126,7 +109,6 @@ export default async function RestaurantsPage({ searchParams }: Props) {
       <Suspense fallback={<div className="mt-8 text-sm text-[var(--ae-ink-muted)]">Loading map…</div>}>
         <RestaurantsExplorer
           restaurants={withDistance}
-          mapRestaurants={mapRestaurants}
           origin={origin}
           locationLabel={locationLabel}
         />
