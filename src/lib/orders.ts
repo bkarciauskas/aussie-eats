@@ -20,6 +20,18 @@ export function canTransition(from: OrderStatus, to: OrderStatus): boolean {
   return ALLOWED_TRANSITIONS[from].includes(to);
 }
 
+/** Max units allowed per order line (cart UI and place-order agree on this). */
+export const MAX_LINE_QUANTITY = 99;
+
+export function parseOrderLineQuantity(rawQty: unknown): number | null {
+  const n = Number(rawQty);
+  const quantity = Math.floor(n);
+  if (!Number.isFinite(n) || quantity < 1 || quantity > MAX_LINE_QUANTITY) {
+    return null;
+  }
+  return quantity;
+}
+
 export type DeliveryAddress = {
   label: string;
   line1: string;

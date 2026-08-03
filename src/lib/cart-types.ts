@@ -17,3 +17,10 @@ export type CartState = {
   minOrderCents: number;
   items: CartItem[];
 };
+
+/** Line subtotal in integer cents (unit × quantity). */
+export function cartSubtotalCents(
+  items: Pick<CartItem, "unitPriceCents" | "quantity">[],
+): number {
+  return items.reduce((sum, i) => sum + i.unitPriceCents * i.quantity, 0);
+}

@@ -25,8 +25,17 @@ export async function loginWithPassword(email: string, password: string) {
 }
 
 export async function signupCustomer(name: string, email: string, password: string) {
+  const trimmedName = name.trim();
+  const normalizedEmail = email.toLowerCase().trim();
+  if (!trimmedName) {
+    return { error: "Name is required." as const };
+  }
+  if (!normalizedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+    return { error: "Please enter a valid email address." as const };
+  }
+
   const existing = await prisma.user.findUnique({
-    where: { email: email.toLowerCase().trim() },
+    where: { email: normalizedEmail },
   });
   if (existing) {
     return { error: "An account with that email already exists." as const };
@@ -38,8 +47,8 @@ export async function signupCustomer(name: string, email: string, password: stri
   const passwordHash = await bcrypt.hash(password, 10);
   const user = await prisma.user.create({
     data: {
-      name: name.trim(),
-      email: email.toLowerCase().trim(),
+      name: trimmedName,
+      email: normalizedEmail,
       passwordHash,
       role: Role.CUSTOMER,
     },

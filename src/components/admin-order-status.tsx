@@ -14,7 +14,7 @@ export function AdminOrderStatus({
 }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  const next = ALLOWED_TRANSITIONS[status];
+  const next = ALLOWED_TRANSITIONS[status] ?? [];
 
   if (!next.length) {
     return (

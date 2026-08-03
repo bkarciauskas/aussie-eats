@@ -9,7 +9,8 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { CartItem, CartState } from "@/lib/cart-types";
+import { cartSubtotalCents, type CartItem, type CartState } from "@/lib/cart-types";
+import { MAX_LINE_QUANTITY } from "@/lib/orders";
 
 const STORAGE_KEY = "aussieeats_cart_v1";
 
@@ -68,6 +69,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const addItem: CartContextValue["addItem"] = useCallback((item, meta) => {
     let result: { ok: true } | { ok: false; error: string } = { ok: true };
+    const addQty = Math.max(1, Math.min(MAX_LINE_QUANTITY, Math.floor(item.quantity ?? 1)));
     setCart((prev) => {
       if (prev.restaurantId && prev.restaurantId !== meta.restaurantId && prev.items.length > 0) {
         result = {
@@ -80,14 +82,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const items = existing
         ? prev.items.map((i) =>
             i.menuItemId === item.menuItemId
-              ? { ...i, quantity: i.quantity + (item.quantity ?? 1) }
+              ? { ...i, quantity: Math.min(MAX_LINE_QUANTITY, i.quantity + addQty) }
               : i,
           )
         : [
             ...prev.items,
             {
               ...item,
-              quantity: item.quantity ?? 1,
+              quantity: addQty,
               restaurantId: meta.restaurantId,
               restaurantSlug: meta.restaurantSlug,
               restaurantName: meta.restaurantName,
@@ -107,10 +109,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const setQuantity = useCallback((menuItemId: string, quantity: number) => {
     setCart((prev) => {
+      const nextQty = Math.min(MAX_LINE_QUANTITY, Math.floor(quantity));
       const items =
-        quantity <= 0
+        nextQty <= 0
           ? prev.items.filter((i) => i.menuItemId !== menuItemId)
-          : prev.items.map((i) => (i.menuItemId === menuItemId ? { ...i, quantity } : i));
+          : prev.items.map((i) => (i.menuItemId === menuItemId ? { ...i, quantity: nextQty } : i));
       if (items.length === 0) return emptyCart;
       return { ...prev, items };
     });
@@ -122,10 +125,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const clearCart = useCallback(() => setCart(emptyCart), []);
 
-  const subtotalCents = useMemo(
-    () => cart.items.reduce((sum, i) => sum + i.unitPriceCents, 0),
-    [cart.items],
-  );
+  const subtotalCents = useMemo(() => cartSubtotalCents(cart.items), [cart.items]);
   const itemCount = useMemo(
     () => cart.items.reduce((sum, i) => sum + i.quantity, 0),
     [cart.items],
