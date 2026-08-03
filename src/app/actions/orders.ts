@@ -2,7 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { canTransition, parseOrderLineQuantity } from "@/lib/orders";
+import {
+  canTransition,
+  parseOrderLineQuantity,
+  parseStatusHistory,
+} from "@/lib/orders";
 import { OrderStatus, isOrderStatus } from "@/lib/roles";
 import { requireAdmin, requireUser } from "@/lib/session";
 
@@ -90,11 +94,15 @@ export async function placeOrderAction(input: PlaceOrderInput) {
   const deliveryFeeCents = restaurant.deliveryFeeCents;
   const totalCents = subtotalCents + deliveryFeeCents;
 
+  const now = new Date();
   const order = await prisma.order.create({
     data: {
       userId: session.userId,
       restaurantId: restaurant.id,
-      status: OrderStatus.pending as string,
+      status: OrderStatus.pending,
+      statusHistoryJson: JSON.stringify([
+        { status: OrderStatus.pending, at: now.toISOString() },
+      ]),
       subtotalCents,
       deliveryFeeCents,
       totalCents,
@@ -136,9 +144,12 @@ export async function updateOrderStatusAction(orderId: string, status: OrderStat
     return { error: `Cannot change status from ${order.status} to ${status}.` };
   }
 
+  const history = [...parseStatusHistory(order.statusHistoryJson)];
+  history.push({ status, at: new Date().toISOString() });
+
   await prisma.order.update({
     where: { id: orderId },
-    data: { status },
+    data: { status, statusHistoryJson: JSON.stringify(history) },
   });
 
   revalidatePath("/admin");

@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { restaurants } from "./seed-data";
+import { DEMO_CITIES } from "../src/lib/cities";
 
 const Role = { CUSTOMER: "CUSTOMER", ADMIN: "ADMIN" } as const;
 const OrderStatus = {
@@ -13,20 +14,33 @@ const OrderStatus = {
 
 const prisma = new PrismaClient();
 
-async function main() {
-  await prisma.orderItem.deleteMany();
-  await prisma.order.deleteMany();
-  await prisma.menuItem.deleteMany();
-  await prisma.category.deleteMany();
-  await prisma.restaurant.deleteMany();
-  await prisma.address.deleteMany();
-  await prisma.user.deleteMany();
+function historyFor(
+  status: string,
+  createdAt: Date,
+): { status: string; at: string }[] {
+  const steps = ["pending", "preparing", "out_for_delivery", "delivered"] as const;
+  if (status === "cancelled") {
+    return [
+      { status: "pending", at: createdAt.toISOString() },
+      { status: "cancelled", at: new Date(createdAt.getTime() + 20 * 60_000).toISOString() },
+    ];
+  }
+  const idx = steps.indexOf(status as (typeof steps)[number]);
+  const end = idx >= 0 ? idx : 0;
+  return steps.slice(0, end + 1).map((s, i) => ({
+    status: s,
+    at: new Date(createdAt.getTime() + i * 25 * 60_000).toISOString(),
+  }));
+}
 
+async function ensureUsers() {
   const customerHash = await bcrypt.hash("demo1234", 10);
   const adminHash = await bcrypt.hash("admin1234", 10);
 
-  const customer = await prisma.user.create({
-    data: {
+  const customer = await prisma.user.upsert({
+    where: { email: "demo@aussieeats.local" },
+    update: { name: "Demo Customer", role: Role.CUSTOMER },
+    create: {
       email: "demo@aussieeats.local",
       passwordHash: customerHash,
       name: "Demo Customer",
@@ -45,8 +59,10 @@ async function main() {
     },
   });
 
-  await prisma.user.create({
-    data: {
+  await prisma.user.upsert({
+    where: { email: "admin@aussieeats.local" },
+    update: { name: "AussieEats Admin", role: Role.ADMIN },
+    create: {
       email: "admin@aussieeats.local",
       passwordHash: adminHash,
       name: "AussieEats Admin",
@@ -54,9 +70,56 @@ async function main() {
     },
   });
 
-  const createdRestaurants = [];
+  const extraCustomers = [
+    { email: "maya@aussieeats.local", name: "Maya Chen", city: DEMO_CITIES[1] },
+    { email: "liam@aussieeats.local", name: "Liam O'Brien", city: DEMO_CITIES[2] },
+    { email: "priya@aussieeats.local", name: "Priya Shah", city: DEMO_CITIES[3] },
+    { email: "jack@aussieeats.local", name: "Jack Nguyen", city: DEMO_CITIES[4] },
+    { email: "ella@aussieeats.local", name: "Ella Brooks", city: DEMO_CITIES[5] },
+    { email: "sam@aussieeats.local", name: "Sam Taylor", city: DEMO_CITIES[0] },
+    { email: "zoe@aussieeats.local", name: "Zoe Martin", city: DEMO_CITIES[1] },
+    { email: "noah@aussieeats.local", name: "Noah Williams", city: DEMO_CITIES[2] },
+  ];
+
+  const customers = [customer];
+  for (const c of extraCustomers) {
+    const user = await prisma.user.upsert({
+      where: { email: c.email },
+      update: { name: c.name, role: Role.CUSTOMER },
+      create: {
+        email: c.email,
+        passwordHash: customerHash,
+        name: c.name,
+        role: Role.CUSTOMER,
+        addresses: {
+          create: {
+            label: "Home",
+            line1: `12 Demo Street`,
+            suburb: c.city.suburb,
+            state: c.city.state,
+            postcode: c.city.postcode,
+            lat: c.city.lat,
+            lng: c.city.lng,
+          },
+        },
+      },
+    });
+    customers.push(user);
+  }
+
+  return customers;
+}
+
+async function bootstrapHandwrittenRestaurantsIfEmpty() {
+  const count = await prisma.restaurant.count();
+  if (count > 0) {
+    console.log(`  Catalog already has ${count} restaurants — skipping handwritten bootstrap`);
+    return;
+  }
+
+  console.log("  Catalog empty — loading handwritten fallback restaurants");
   for (const r of restaurants) {
-    const created = await prisma.restaurant.create({
+    await prisma.restaurant.create({
       data: {
         name: r.name,
         slug: r.slug,
@@ -70,6 +133,7 @@ async function main() {
         deliveryFeeCents: r.deliveryFeeCents,
         minOrderCents: r.minOrderCents,
         rating: r.rating,
+        userRatingCount: Math.round(80 + Math.random() * 400),
         phone: r.phone,
         isOpen: true,
         isActive: true,
@@ -89,100 +153,113 @@ async function main() {
           })),
         },
       },
-      include: {
-        categories: { include: { items: true } },
+    });
+  }
+}
+
+async function seedDenseOrders(
+  customers: { id: string; email: string }[],
+) {
+  // Refresh sample order history without touching the restaurant catalog.
+  await prisma.orderItem.deleteMany();
+  await prisma.order.deleteMany();
+
+  const catalog = await prisma.restaurant.findMany({
+    where: { isActive: true },
+    include: {
+      categories: { include: { items: true }, orderBy: { sortOrder: "asc" } },
+    },
+    take: 80,
+  });
+  if (catalog.length === 0) return;
+
+  const statuses = [
+    OrderStatus.delivered,
+    OrderStatus.delivered,
+    OrderStatus.delivered,
+    OrderStatus.preparing,
+    OrderStatus.out_for_delivery,
+    OrderStatus.pending,
+    OrderStatus.cancelled,
+  ] as const;
+
+  const demo = customers.find((c) => c.email === "demo@aussieeats.local")!;
+  let created = 0;
+
+  for (let i = 0; i < 55; i++) {
+    const restaurant = catalog[i % catalog.length];
+    const items = restaurant.categories.flatMap((c) => c.items).filter((it) => it.isAvailable);
+    if (items.length === 0) continue;
+
+    const pick = items.slice(0, 1 + (i % 3));
+    const subtotalCents = pick.reduce(
+      (sum, it, idx) => sum + it.priceCents * (1 + (idx % 2)),
+      0,
+    );
+    const status = statuses[i % statuses.length];
+    const createdAt = new Date(Date.now() - (i + 1) * 3 * 60 * 60 * 1000);
+    const user = i % 4 === 0 ? demo : customers[i % customers.length];
+    const cityMeta = DEMO_CITIES.find((c) => c.label === restaurant.city) ?? DEMO_CITIES[0];
+
+    await prisma.order.create({
+      data: {
+        userId: user.id,
+        restaurantId: restaurant.id,
+        status,
+        statusHistoryJson: JSON.stringify(historyFor(status, createdAt)),
+        subtotalCents,
+        deliveryFeeCents: restaurant.deliveryFeeCents,
+        totalCents: subtotalCents + restaurant.deliveryFeeCents,
+        deliveryAddress: JSON.stringify({
+          label: "Home",
+          line1: "12 Demo Street",
+          suburb: cityMeta.suburb,
+          state: cityMeta.state,
+          postcode: cityMeta.postcode,
+        }),
+        paymentMethod: "Pay on delivery",
+        createdAt,
+        items: {
+          create: pick.map((it, idx) => ({
+            menuItemId: it.id,
+            name: it.name,
+            unitPriceCents: it.priceCents,
+            quantity: 1 + (idx % 2),
+          })),
+        },
       },
     });
-    createdRestaurants.push(created);
+    created += 1;
   }
 
-  const burger = createdRestaurants.find((r) => r.slug === "harbour-burger-co")!;
-  const thai = createdRestaurants.find((r) => r.slug === "newtown-thai-kitchen")!;
-  const burgerItem = burger.categories[0].items[0];
-  const chips = burger.categories[1].items[0];
-  const padThai = thai.categories[1].items[0];
+  console.log(`  Seeded ${created} sample orders`);
+}
 
-  await prisma.order.create({
-    data: {
-      userId: customer.id,
-      restaurantId: burger.id,
-      status: OrderStatus.delivered,
-      subtotalCents: burgerItem.priceCents + chips.priceCents,
-      deliveryFeeCents: burger.deliveryFeeCents,
-      totalCents: burgerItem.priceCents + chips.priceCents + burger.deliveryFeeCents,
-      deliveryAddress: JSON.stringify({
-        label: "Home",
-        line1: "100 George Street",
-        suburb: "Sydney",
-        state: "NSW",
-        postcode: "2000",
-      }),
-      paymentMethod: "Pay on delivery",
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3),
-      items: {
-        create: [
-          {
-            menuItemId: burgerItem.id,
-            name: burgerItem.name,
-            unitPriceCents: burgerItem.priceCents,
-            quantity: 1,
-          },
-          {
-            menuItemId: chips.id,
-            name: chips.name,
-            unitPriceCents: chips.priceCents,
-            quantity: 1,
-          },
-        ],
-      },
-    },
+async function main() {
+  console.log("Seed (non-destructive to restaurant catalog):");
+  const customers = await ensureUsers();
+  console.log(`  Users upserted (${customers.length} customers + admin)`);
+  await bootstrapHandwrittenRestaurantsIfEmpty();
+  await seedDenseOrders(customers);
+
+  const restaurantCount = await prisma.restaurant.count();
+  const orderCount = await prisma.order.count();
+  const byCity = await prisma.restaurant.groupBy({
+    by: ["city"],
+    _count: { _all: true },
+    orderBy: { city: "asc" },
   });
-
-  await prisma.order.create({
-    data: {
-      userId: customer.id,
-      restaurantId: thai.id,
-      status: OrderStatus.preparing,
-      subtotalCents: padThai.priceCents * 2,
-      deliveryFeeCents: thai.deliveryFeeCents,
-      totalCents: padThai.priceCents * 2 + thai.deliveryFeeCents,
-      deliveryAddress: JSON.stringify({
-        label: "Home",
-        line1: "100 George Street",
-        suburb: "Sydney",
-        state: "NSW",
-        postcode: "2000",
-      }),
-      paymentMethod: "Pay on delivery",
-      createdAt: new Date(Date.now() - 1000 * 60 * 45),
-      items: {
-        create: [
-          {
-            menuItemId: padThai.id,
-            name: padThai.name,
-            unitPriceCents: padThai.priceCents,
-            quantity: 2,
-          },
-        ],
-      },
-    },
-  });
-
-  const byCity = createdRestaurants.reduce<Record<string, number>>((acc, r) => {
-    acc[r.city] = (acc[r.city] || 0) + 1;
-    return acc;
-  }, {});
 
   console.log("Seed complete:");
   console.log("  Customer: demo@aussieeats.local / demo1234");
   console.log("  Admin:    admin@aussieeats.local / admin1234");
-  console.log(`  Restaurants: ${createdRestaurants.length}`);
+  console.log(`  Restaurants: ${restaurantCount}`);
+  console.log(`  Orders: ${orderCount}`);
   console.log(
     "  Cities:",
-    Object.entries(byCity)
-      .map(([city, n]) => `${city} (${n})`)
-      .join(", "),
+    byCity.map((r) => `${r.city} (${r._count._all})`).join(", "),
   );
+  console.log("  Tip: run `npm run db:import-places` once to pull ~100 real venues per city.");
 }
 
 main()

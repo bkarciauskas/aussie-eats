@@ -4,6 +4,8 @@ import { formatAUD } from "@/lib/money";
 import { parseCuisineTags } from "@/lib/restaurants";
 import { AddToCartButton } from "@/components/add-to-cart-button";
 import { RestaurantLocationMap } from "@/components/restaurant-location-map";
+import { DeliveryEta } from "@/components/delivery-eta";
+import { formatHoursSummary, isOpenNow } from "@/lib/opening-hours";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -24,6 +26,16 @@ export default async function RestaurantDetailPage({ params }: Props) {
   if (!restaurant) notFound();
 
   const tags = parseCuisineTags(restaurant.cuisineTags);
+  const openNow = isOpenNow({
+    openingHoursJson: restaurant.openingHoursJson,
+    isOpen: restaurant.isOpen,
+    city: restaurant.city,
+  });
+  const hoursSummary = formatHoursSummary(restaurant.openingHoursJson);
+  const ratingLabel =
+    restaurant.userRatingCount > 0
+      ? `${restaurant.rating.toFixed(1)} ★ (${restaurant.userRatingCount.toLocaleString("en-AU")} reviews)`
+      : `${restaurant.rating.toFixed(1)} ★`;
 
   return (
     <div>
@@ -40,13 +52,21 @@ export default async function RestaurantDetailPage({ params }: Props) {
           <h1 className="font-display mt-2 text-4xl sm:text-5xl">{restaurant.name}</h1>
           <p className="mt-3 max-w-2xl text-white/85">{restaurant.description}</p>
           <div className="mt-4 flex flex-wrap gap-3 text-sm text-white/80">
-            <span>{restaurant.rating.toFixed(1)} ★</span>
+            <span>{ratingLabel}</span>
             <span>{formatAUD(restaurant.deliveryFeeCents)} delivery</span>
             <span>Min {formatAUD(restaurant.minOrderCents)}</span>
-            <span className={restaurant.isOpen ? "text-emerald-200" : "text-red-200"}>
-              {restaurant.isOpen ? "Open now" : "Closed"}
+            <DeliveryEta
+              restaurantLat={restaurant.lat}
+              restaurantLng={restaurant.lng}
+              className="text-white/80"
+            />
+            <span className={openNow ? "text-emerald-200" : "text-red-200"}>
+              {openNow ? "Open now" : "Closed"}
             </span>
           </div>
+          {hoursSummary ? (
+            <p className="mt-2 text-sm text-white/70">{hoursSummary}</p>
+          ) : null}
           <div className="mt-3 flex flex-wrap gap-1.5">
             {tags.map((tag) => (
               <span key={tag} className="rounded bg-white/15 px-2 py-0.5 text-xs">
@@ -54,6 +74,9 @@ export default async function RestaurantDetailPage({ params }: Props) {
               </span>
             ))}
           </div>
+          <p className="mt-4 max-w-xl text-xs text-white/55">
+            Venue details sourced from Google Places where available; menus are demo-generated.
+          </p>
         </div>
       </section>
 
@@ -82,9 +105,11 @@ export default async function RestaurantDetailPage({ params }: Props) {
                     restaurantId={restaurant.id}
                     restaurantSlug={restaurant.slug}
                     restaurantName={restaurant.name}
+                    restaurantLat={restaurant.lat}
+                    restaurantLng={restaurant.lng}
                     deliveryFeeCents={restaurant.deliveryFeeCents}
                     minOrderCents={restaurant.minOrderCents}
-                    disabled={!item.isAvailable || !restaurant.isOpen}
+                    disabled={!item.isAvailable || !openNow}
                   />
                 </li>
               ))}
@@ -96,6 +121,7 @@ export default async function RestaurantDetailPage({ params }: Props) {
           <h2 className="font-display text-2xl text-[var(--ae-green)]">Where to find us</h2>
           <p className="mt-1 text-sm text-[var(--ae-ink-muted)]">
             {restaurant.suburb}, {restaurant.city}
+            {restaurant.phone ? ` · ${restaurant.phone}` : ""}
           </p>
           <div className="mt-4">
             <RestaurantLocationMap

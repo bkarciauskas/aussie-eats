@@ -42,6 +42,9 @@ prisma/dev.db-journal
 *.db
 *.db-journal
 
+# Places ingest cover photos (regenerate via npm run db:import-places)
+/public/images/imported/
+
 # vercel
 .vercel
 

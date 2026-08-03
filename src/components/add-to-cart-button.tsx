@@ -12,6 +12,8 @@ type Props = {
   restaurantId: string;
   restaurantSlug: string;
   restaurantName: string;
+  restaurantLat: number;
+  restaurantLng: number;
   deliveryFeeCents: number;
   minOrderCents: number;
   disabled?: boolean;
@@ -42,6 +44,8 @@ export function AddToCartButton(props: Props) {
               restaurantId: props.restaurantId,
               restaurantSlug: props.restaurantSlug,
               restaurantName: props.restaurantName,
+              restaurantLat: props.restaurantLat,
+              restaurantLng: props.restaurantLng,
               deliveryFeeCents: props.deliveryFeeCents,
               minOrderCents: props.minOrderCents,
             },

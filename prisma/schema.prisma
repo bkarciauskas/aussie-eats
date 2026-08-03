@@ -48,6 +48,11 @@ model Restaurant {
   isOpen           Boolean    @default(true)
   isActive         Boolean    @default(true)
   rating           Float      @default(4.5)
+  /// Google Places place id; upsert key for catalog ingest
+  placeId          String?    @unique
+  userRatingCount  Int        @default(0)
+  /// Serialized Places regularOpeningHours JSON
+  openingHoursJson String?
   phone            String?
   categories       Category[]
   orders           Order[]
@@ -84,6 +89,8 @@ model Order {
   restaurant       Restaurant  @relation(fields: [restaurantId], references: [id])
   /// pending | preparing | out_for_delivery | delivered | cancelled
   status           String      @default("pending")
+  /// JSON array of { status, at } status transitions
+  statusHistoryJson String     @default("[]")
   subtotalCents    Int
   deliveryFeeCents Int
   totalCents       Int

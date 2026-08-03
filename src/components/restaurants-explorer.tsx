@@ -17,11 +17,14 @@ export type ExplorerRestaurant = {
   city: string;
   suburb: string;
   rating: number;
+  userRatingCount: number;
   deliveryFeeCents: number;
   isOpen: boolean;
+  hoursSummary?: string | null;
   lat: number;
   lng: number;
   distanceKm: number | null;
+  etaLabel?: string | null;
 };
 
 export function RestaurantsExplorer({
@@ -86,9 +89,12 @@ export function RestaurantsExplorer({
                   city={r.city}
                   suburb={r.suburb}
                   rating={r.rating}
+                  userRatingCount={r.userRatingCount}
                   deliveryFeeCents={r.deliveryFeeCents}
                   isOpen={r.isOpen}
                   distanceKm={r.distanceKm}
+                  etaLabel={r.etaLabel}
+                  hoursSummary={r.hoursSummary}
                 />
               </div>
             ))}

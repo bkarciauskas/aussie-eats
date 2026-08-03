@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCart } from "@/components/cart-provider";
+import { DeliveryEta } from "@/components/delivery-eta";
 import { formatAUD } from "@/lib/money";
 
 export function CartView() {
@@ -74,6 +75,14 @@ export function CartView() {
           <span>Delivery</span>
           <span>{formatAUD(cart.deliveryFeeCents)}</span>
         </div>
+        {cart.restaurantLat != null && cart.restaurantLng != null ? (
+          <DeliveryEta
+            restaurantLat={cart.restaurantLat}
+            restaurantLng={cart.restaurantLng}
+            className="flex justify-between text-sm text-[var(--ae-ink-muted)]"
+            asRow
+          />
+        ) : null}
         <div className="flex justify-between border-t border-[var(--ae-line)] pt-3 font-semibold">
           <span>Total</span>
           <span>{formatAUD(totalCents)}</span>

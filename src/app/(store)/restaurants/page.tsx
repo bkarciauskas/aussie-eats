@@ -5,9 +5,12 @@ import { RestaurantsExplorer, type ExplorerRestaurant } from "@/components/resta
 import { distanceKm, parseCuisineTags, parseOrigin } from "@/lib/restaurants";
 import {
   demoCityLabel,
+  findDemoCity,
   matchesRestaurantCity,
   resolveRestaurantQuery,
 } from "@/lib/cities";
+import { estimateDeliveryEta } from "@/lib/eta";
+import { formatHoursSummary, isOpenNow } from "@/lib/opening-hours";
 
 type Props = {
   searchParams: Promise<{
@@ -17,6 +20,7 @@ type Props = {
     lat?: string;
     lng?: string;
     place?: string;
+    open?: string;
   }>;
 };
 
@@ -28,11 +32,14 @@ export default async function RestaurantsPage({ searchParams }: Props) {
     lat,
     lng,
     place = "",
+    open = "",
   } = await searchParams;
-  // Prefer the resolved city id so labels and ids both filter correctly.
   const { q, city: cityFilter } = resolveRestaurantQuery({ q: rawQ, city });
   const cityLabel = demoCityLabel(cityFilter);
+  const openNowOnly = open === "1" || open === "true";
   const origin = parseOrigin(lat, lng);
+  const cityPin = findDemoCity(cityFilter);
+  const etaOrigin = origin ?? (cityPin ? { lat: cityPin.lat, lng: cityPin.lng } : null);
 
   const restaurants = await prisma.restaurant.findMany({
     where: { isActive: true },
@@ -54,25 +61,49 @@ export default async function RestaurantsPage({ searchParams }: Props) {
     const matchesCuisine =
       !cuisine || tags.some((t) => t.toLowerCase() === cuisine.toLowerCase());
     const matchesCity = matchesRestaurantCity(r.city, cityFilter);
-    return matchesQ && matchesCuisine && matchesCity;
+    const openNow = isOpenNow({
+      openingHoursJson: r.openingHoursJson,
+      isOpen: r.isOpen,
+      city: r.city,
+    });
+    const matchesOpen = !openNowOnly || openNow;
+    return matchesQ && matchesCuisine && matchesCity && matchesOpen;
   });
 
-  const withDistance: ExplorerRestaurant[] = filtered.map((r) => ({
-    id: r.id,
-    slug: r.slug,
-    name: r.name,
-    description: r.description,
-    image: r.image,
-    cuisineTags: r.cuisineTags,
-    city: r.city,
-    suburb: r.suburb,
-    rating: r.rating,
-    deliveryFeeCents: r.deliveryFeeCents,
-    isOpen: r.isOpen,
-    lat: r.lat,
-    lng: r.lng,
-    distanceKm: origin ? distanceKm(origin.lat, origin.lng, r.lat, r.lng) : null,
-  }));
+  const withDistance: ExplorerRestaurant[] = filtered.map((r) => {
+    const openNow = isOpenNow({
+      openingHoursJson: r.openingHoursJson,
+      isOpen: r.isOpen,
+      city: r.city,
+    });
+    const eta = etaOrigin
+      ? estimateDeliveryEta({
+          originLat: etaOrigin.lat,
+          originLng: etaOrigin.lng,
+          restaurantLat: r.lat,
+          restaurantLng: r.lng,
+        }).label
+      : null;
+    return {
+      id: r.id,
+      slug: r.slug,
+      name: r.name,
+      description: r.description,
+      image: r.image,
+      cuisineTags: r.cuisineTags,
+      city: r.city,
+      suburb: r.suburb,
+      rating: r.rating,
+      userRatingCount: r.userRatingCount,
+      deliveryFeeCents: r.deliveryFeeCents,
+      isOpen: openNow,
+      hoursSummary: formatHoursSummary(r.openingHoursJson),
+      lat: r.lat,
+      lng: r.lng,
+      distanceKm: origin ? distanceKm(origin.lat, origin.lng, r.lat, r.lng) : null,
+      etaLabel: eta,
+    };
+  });
 
   if (origin) {
     withDistance.sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity));
@@ -91,8 +122,9 @@ export default async function RestaurantsPage({ searchParams }: Props) {
             {origin
               ? `Sorted by distance from ${locationLabel}`
               : cityFilter
-                ? `${cityLabel} · filter or search across seeded suburbs`
+                ? `${cityLabel} · filter or search across suburbs`
                 : "Sydney, Melbourne, Brisbane, Perth, Adelaide, Hobart"}
+            {openNowOnly ? " · open now" : ""}
           </p>
         </div>
       </div>
@@ -103,6 +135,7 @@ export default async function RestaurantsPage({ searchParams }: Props) {
           initialQ={q}
           initialCuisine={cuisine}
           initialCity={cityFilter}
+          initialOpenNow={openNowOnly}
         />
       </Suspense>
 

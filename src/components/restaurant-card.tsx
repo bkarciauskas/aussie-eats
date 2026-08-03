@@ -11,9 +11,12 @@ type Props = {
   city?: string;
   suburb: string;
   rating: number;
+  userRatingCount?: number;
   deliveryFeeCents: number;
   isOpen: boolean;
   distanceKm?: number | null;
+  etaLabel?: string | null;
+  hoursSummary?: string | null;
 };
 
 export function RestaurantCard({
@@ -25,11 +28,18 @@ export function RestaurantCard({
   city,
   suburb,
   rating,
+  userRatingCount = 0,
   deliveryFeeCents,
   isOpen,
   distanceKm,
+  etaLabel,
+  hoursSummary,
 }: Props) {
   const tags = parseCuisineTags(cuisineTags);
+  const ratingLabel =
+    userRatingCount > 0
+      ? `${rating.toFixed(1)} ★ (${userRatingCount.toLocaleString("en-AU")})`
+      : `${rating.toFixed(1)} ★`;
 
   return (
     <Link href={`/restaurants/${slug}`} className="restaurant-row group">
@@ -44,17 +54,21 @@ export function RestaurantCard({
           <h2 className="font-display text-xl text-[var(--ae-ink)] group-hover:text-[var(--ae-green)]">
             {name}
           </h2>
-          <span className="text-sm text-[var(--ae-ink-muted)]">{rating.toFixed(1)} ★</span>
+          <span className="text-sm text-[var(--ae-ink-muted)]">{ratingLabel}</span>
         </div>
         <p className="mt-1 line-clamp-2 text-sm text-[var(--ae-ink-muted)]">{description}</p>
         <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs text-[var(--ae-ink-soft)]">
           <span>{city ? `${suburb}, ${city}` : suburb}</span>
           <span>{formatAUD(deliveryFeeCents)} delivery</span>
           {distanceKm != null ? <span>{distanceKm.toFixed(1)} km</span> : null}
-          <span className={isOpen ? "text-[var(--ae-danger)]" : "text-[var(--ae-green)]"}>
+          {etaLabel ? <span>{etaLabel}</span> : null}
+          <span className={isOpen ? "text-[var(--ae-green)]" : "text-[var(--ae-danger)]"}>
             {isOpen ? "Open" : "Closed"}
           </span>
         </div>
+        {hoursSummary ? (
+          <p className="mt-1 text-xs text-[var(--ae-ink-soft)]">{hoursSummary}</p>
+        ) : null}
         <div className="mt-2 flex flex-wrap gap-1.5">
           {tags.slice(0, 3).map((tag) => (
             <span key={tag} className="tag">
