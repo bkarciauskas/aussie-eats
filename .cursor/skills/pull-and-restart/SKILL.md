@@ -29,19 +29,40 @@ git pull
 - If `git pull` fails due to local changes, show the conflict/status and ask before discarding or stashing.
 - Do not commit, stash, or reset unless the user asks.
 
-### 3. Install, migrate, and seed
-
-After a successful pull:
+### 3. Install (always); migrate / seed only when needed
 
 ```bash
 npm install
-npx prisma migrate dev
-npm run db:seed
 ```
 
-- `npm install` covers lockfile / dependency updates and runs `prisma generate` via `postinstall`.
-- Always apply migrations — a schema/client mismatch (e.g. missing `Restaurant.city`) breaks the storefront.
-- Always reseed after pull/migrate so multi-city demo restaurants are present. Seed wipes and recreates demo users, restaurants, menus, and sample orders.
+`npm install` covers lockfile / dependency updates and runs `prisma generate` via `postinstall`.
+
+**Do not migrate or seed on every pull.** Local catalog/orders live in `prisma/dev.db` (gitignored SQLite). That file persists across pulls; it is not in git. Reseeding is unnecessary for a normal sync and can refresh sample orders you do not want to touch.
+
+After pull, check what changed:
+
+| Change | Action |
+| --- | --- |
+| `package.json` / lockfile | Already covered by `npm install` |
+| `prisma/migrations/**` or `prisma/schema.prisma` | `npx prisma migrate dev` |
+| Missing `prisma/dev.db`, or restaurant catalog empty | `npx prisma migrate dev` then `npm run db:seed` (and optionally `npm run db:import-places` for the large catalog) |
+| Only app/docs/skill changes | Skip migrate and seed |
+
+How to decide quickly after pull:
+
+```bash
+# migrations / schema in the pulled commits?
+git diff --name-only HEAD@{1} HEAD -- prisma/migrations prisma/schema.prisma
+
+# DB present?
+test -f prisma/dev.db && echo "db ok" || echo "db missing"
+```
+
+Notes:
+
+- `prisma migrate dev` when already applied is a cheap no-op ("already in sync") — safe if unsure whether migrations changed.
+- `db:seed` upserts demo users and **replaces sample orders**. It bootstraps handwritten restaurants **only if the catalog is empty**; it does **not** delete Places-imported rows.
+- Never run `db:reset` as part of pull-and-restart unless the user explicitly asks.
 
 ### 4. Start the app
 
@@ -56,5 +77,5 @@ npm run dev
 ## Done criteria
 
 - Branch is up to date with remote (or pull outcome explained).
-- Migrations applied and seed completed (mention city counts from seed output if available).
+- `npm install` completed; migrate/seed only if the table above required it (mention what was skipped and why).
 - Dev server is running and the Local URL is reported to the user.
