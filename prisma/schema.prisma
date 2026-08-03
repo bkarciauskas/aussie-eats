@@ -17,6 +17,7 @@ model User {
   createdAt    DateTime  @default(now())
   addresses    Address[]
   orders       Order[]
+  reviews      Review[]
 }
 
 model Address {
@@ -56,6 +57,7 @@ model Restaurant {
   phone            String?
   categories       Category[]
   orders           Order[]
+  reviews          Review[]
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt
 }
@@ -99,6 +101,7 @@ model Order {
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
   items            OrderItem[]
+  review           Review?
 }
 
 model OrderItem {
@@ -110,4 +113,18 @@ model OrderItem {
   name           String
   unitPriceCents Int
   quantity       Int
+}
+
+model Review {
+  id           String     @id @default(cuid())
+  orderId      String     @unique
+  order        Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  restaurantId String
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  /// 1–5 star rating
+  rating       Int
+  comment      String     @default("")
+  createdAt    DateTime   @default(now())
 }
