@@ -9,11 +9,13 @@ export function RestaurantFilters({
   initialQ = "",
   initialCuisine = "",
   initialCity = "",
+  initialOpenNow = false,
 }: {
   cuisines: string[];
   initialQ?: string;
   initialCuisine?: string;
   initialCity?: string;
+  initialOpenNow?: boolean;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -22,23 +24,34 @@ export function RestaurantFilters({
 
   function readForm() {
     if (!formRef.current) {
-      return { q: initialQ, cuisine: initialCuisine, city: initialCity };
+      return {
+        q: initialQ,
+        cuisine: initialCuisine,
+        city: initialCity,
+        openNow: initialOpenNow,
+      };
     }
     const fd = new FormData(formRef.current);
     return {
       q: String(fd.get("q") || ""),
       cuisine: String(fd.get("cuisine") || ""),
       city: String(fd.get("city") || ""),
+      openNow: fd.get("openNow") === "on",
     };
   }
 
   function apply(
-    next: { q?: string; cuisine?: string; city?: string; explicitCity?: boolean } = {},
+    next: {
+      q?: string;
+      cuisine?: string;
+      city?: string;
+      openNow?: boolean;
+      explicitCity?: boolean;
+    } = {},
   ) {
     const current = readForm();
     const params = new URLSearchParams(searchParams.toString());
     const cuisine = next.cuisine ?? current.cuisine;
-    // City-name searches win over a stale city dropdown (e.g. q=melbourne + city=Sydney).
     const resolved = resolveRestaurantQuery({
       q: next.q ?? current.q,
       city: next.city ?? current.city,
@@ -51,6 +64,9 @@ export function RestaurantFilters({
     const cityOut = next.explicitCity ? current.city || resolved.city : resolved.city;
     if (cityOut) params.set("city", cityOut);
     else params.delete("city");
+    const openNow = next.openNow ?? current.openNow;
+    if (openNow) params.set("open", "1");
+    else params.delete("open");
     startTransition(() => {
       router.push(`/restaurants?${params.toString()}`);
     });
@@ -106,6 +122,16 @@ export function RestaurantFilters({
             </option>
           ))}
         </select>
+      </label>
+      <label className="flex items-center gap-2 pb-2 text-sm text-[var(--ae-ink-muted)]">
+        <input
+          type="checkbox"
+          name="openNow"
+          defaultChecked={initialOpenNow}
+          onChange={(e) => apply({ openNow: e.target.checked })}
+          disabled={pending}
+        />
+        Open now
       </label>
       <button type="submit" className="btn-secondary" disabled={pending}>
         Filter

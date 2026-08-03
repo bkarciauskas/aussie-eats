@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { formatAUD } from "@/lib/money";
 import { ORDER_STATUS_LABELS, parseDeliveryAddress } from "@/lib/orders";
+import { OrderStatusTimeline } from "@/components/order-status-timeline";
 import { OrderStatus } from "@/lib/roles";
 import { requireUser } from "@/lib/session";
 
@@ -45,7 +46,18 @@ export default async function OrderDetailPage({ params }: Props) {
         </span>
       </div>
 
-      <div className="panel mt-8 space-y-4">
+      <div className="panel mt-8">
+        <h2 className="font-display text-xl">Status</h2>
+        <div className="mt-4">
+          <OrderStatusTimeline
+            status={order.status}
+            statusHistoryJson={order.statusHistoryJson}
+            createdAt={order.createdAt}
+          />
+        </div>
+      </div>
+
+      <div className="panel mt-4 space-y-4">
         <h2 className="font-display text-xl">Items</h2>
         <ul className="divide-y divide-[var(--ae-line)]">
           {order.items.map((item) => (

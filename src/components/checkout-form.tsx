@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/components/cart-provider";
+import { DeliveryEta } from "@/components/delivery-eta";
 import { placeOrderAction } from "@/app/actions/orders";
 import { formatAUD } from "@/lib/money";
 
@@ -157,6 +158,14 @@ export function CheckoutForm({ isLoggedIn, defaultAddress }: Props) {
             <span>Delivery</span>
             <span>{formatAUD(cart.deliveryFeeCents)}</span>
           </div>
+          {cart.restaurantLat != null && cart.restaurantLng != null ? (
+            <DeliveryEta
+              restaurantLat={cart.restaurantLat}
+              restaurantLng={cart.restaurantLng}
+              className="mt-1 flex justify-between text-[var(--ae-ink-muted)]"
+              asRow
+            />
+          ) : null}
           <div className="mt-2 flex justify-between text-base font-semibold">
             <span>Total</span>
             <span>{formatAUD(totalCents)}</span>

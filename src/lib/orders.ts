@@ -43,7 +43,17 @@ export type DeliveryAddress = {
 
 export function parseDeliveryAddress(raw: string): DeliveryAddress {
   try {
-    return JSON.parse(raw) as DeliveryAddress;
+    const parsed: unknown = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") throw new Error("bad address");
+    const obj = parsed as Record<string, unknown>;
+    return {
+      label: typeof obj.label === "string" ? obj.label : "Address",
+      line1: typeof obj.line1 === "string" ? obj.line1 : raw,
+      suburb: typeof obj.suburb === "string" ? obj.suburb : "",
+      state: typeof obj.state === "string" ? obj.state : "NSW",
+      postcode: typeof obj.postcode === "string" ? obj.postcode : "",
+      phone: typeof obj.phone === "string" ? obj.phone : undefined,
+    };
   } catch {
     return {
       label: "Address",
@@ -54,3 +64,32 @@ export function parseDeliveryAddress(raw: string): DeliveryAddress {
     };
   }
 }
+
+export type StatusHistoryEntry = {
+  status: string;
+  at: string;
+};
+
+export function parseStatusHistory(raw: string | null | undefined): StatusHistoryEntry[] {
+  if (!raw) return [];
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.flatMap((entry) => {
+      if (!entry || typeof entry !== "object") return [];
+      const obj = entry as Record<string, unknown>;
+      if (typeof obj.status !== "string" || typeof obj.at !== "string") return [];
+      return [{ status: obj.status, at: obj.at }];
+    });
+  } catch {
+    return [];
+  }
+}
+
+/** Canonical progress steps for the customer timeline (excludes cancelled). */
+export const ORDER_TIMELINE_STEPS = [
+  OrderStatus.pending,
+  OrderStatus.preparing,
+  OrderStatus.out_for_delivery,
+  OrderStatus.delivered,
+] as const;

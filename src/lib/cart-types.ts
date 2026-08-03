@@ -13,6 +13,8 @@ export type CartState = {
   restaurantId: string | null;
   restaurantSlug: string | null;
   restaurantName: string | null;
+  restaurantLat: number | null;
+  restaurantLng: number | null;
   deliveryFeeCents: number;
   minOrderCents: number;
   items: CartItem[];

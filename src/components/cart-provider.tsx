@@ -18,6 +18,8 @@ const emptyCart: CartState = {
   restaurantId: null,
   restaurantSlug: null,
   restaurantName: null,
+  restaurantLat: null,
+  restaurantLng: null,
   deliveryFeeCents: 0,
   minOrderCents: 0,
   items: [],
@@ -34,6 +36,8 @@ type CartContextValue = {
       restaurantId: string;
       restaurantSlug: string;
       restaurantName: string;
+      restaurantLat: number;
+      restaurantLng: number;
       deliveryFeeCents: number;
       minOrderCents: number;
     },
@@ -99,6 +103,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
         restaurantId: meta.restaurantId,
         restaurantSlug: meta.restaurantSlug,
         restaurantName: meta.restaurantName,
+        restaurantLat: meta.restaurantLat,
+        restaurantLng: meta.restaurantLng,
         deliveryFeeCents: meta.deliveryFeeCents,
         minOrderCents: meta.minOrderCents,
         items,
