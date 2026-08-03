@@ -2,6 +2,7 @@ import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { restaurants } from "./seed-data";
 import { DEMO_CITIES } from "../src/lib/cities";
+import { blendRestaurantRating } from "../src/lib/reviews";
 
 const Role = { CUSTOMER: "CUSTOMER", ADMIN: "ADMIN" } as const;
 const OrderStatus = {
@@ -157,12 +158,52 @@ async function bootstrapHandwrittenRestaurantsIfEmpty() {
   }
 }
 
+async function clearOrdersAndReviews() {
+  const existingReviews = await prisma.review.findMany({
+    select: { restaurantId: true, rating: true },
+  });
+
+  // Undo prior seed/live blends so re-running seed does not inflate rating counts.
+  const byRestaurant = new Map<string, number[]>();
+  for (const review of existingReviews) {
+    const list = byRestaurant.get(review.restaurantId) ?? [];
+    list.push(review.rating);
+    byRestaurant.set(review.restaurantId, list);
+  }
+
+  for (const [restaurantId, ratings] of byRestaurant) {
+    const restaurant = await prisma.restaurant.findUnique({ where: { id: restaurantId } });
+    if (!restaurant) continue;
+
+    let { rating, userRatingCount } = restaurant;
+    for (const submitted of ratings) {
+      if (userRatingCount <= 1) {
+        userRatingCount = 0;
+        break;
+      }
+      rating = (rating * userRatingCount - submitted) / (userRatingCount - 1);
+      userRatingCount -= 1;
+    }
+
+    await prisma.restaurant.update({
+      where: { id: restaurantId },
+      data: {
+        rating: userRatingCount === 0 ? restaurant.rating : rating,
+        userRatingCount,
+      },
+    });
+  }
+
+  await prisma.review.deleteMany();
+  await prisma.orderItem.deleteMany();
+  await prisma.order.deleteMany();
+}
+
 async function seedDenseOrders(
   customers: { id: string; email: string }[],
 ) {
   // Refresh sample order history without touching the restaurant catalog.
-  await prisma.orderItem.deleteMany();
-  await prisma.order.deleteMany();
+  await clearOrdersAndReviews();
 
   const catalog = await prisma.restaurant.findMany({
     where: { isActive: true },
@@ -185,6 +226,12 @@ async function seedDenseOrders(
 
   const demo = customers.find((c) => c.email === "demo@aussieeats.local")!;
   let created = 0;
+  const deliveredOrders: {
+    id: string;
+    userId: string;
+    restaurantId: string;
+    createdAt: Date;
+  }[] = [];
 
   for (let i = 0; i < 55; i++) {
     const restaurant = catalog[i % catalog.length];
@@ -201,7 +248,7 @@ async function seedDenseOrders(
     const user = i % 4 === 0 ? demo : customers[i % customers.length];
     const cityMeta = DEMO_CITIES.find((c) => c.label === restaurant.city) ?? DEMO_CITIES[0];
 
-    await prisma.order.create({
+    const order = await prisma.order.create({
       data: {
         userId: user.id,
         restaurantId: restaurant.id,
@@ -230,9 +277,73 @@ async function seedDenseOrders(
       },
     });
     created += 1;
+    if (status === OrderStatus.delivered) {
+      deliveredOrders.push({
+        id: order.id,
+        userId: order.userId,
+        restaurantId: order.restaurantId,
+        createdAt: order.createdAt,
+      });
+    }
   }
 
   console.log(`  Seeded ${created} sample orders`);
+  await seedSampleReviews(deliveredOrders);
+}
+
+async function seedSampleReviews(
+  deliveredOrders: {
+    id: string;
+    userId: string;
+    restaurantId: string;
+    createdAt: Date;
+  }[],
+) {
+  const samples = [
+    { rating: 5, comment: "Arrived hot and exactly as ordered — will reorder." },
+    { rating: 4, comment: "Great flavours. Packaging held up well in the rain." },
+    { rating: 5, comment: "Quick delivery and generous portions." },
+    { rating: 3, comment: "Tasty but a bit late. Still happy overall." },
+    { rating: 4, comment: "" },
+    { rating: 5, comment: "Best dumpling run this week." },
+  ] as const;
+
+  // Leave some delivered orders unreviewed so the demo customer can still submit a review.
+  const toReview = deliveredOrders.filter((_, idx) => idx % 3 !== 0).slice(0, samples.length);
+  let created = 0;
+
+  for (let i = 0; i < toReview.length; i++) {
+    const order = toReview[i];
+    const sample = samples[i % samples.length];
+    const restaurant = await prisma.restaurant.findUnique({ where: { id: order.restaurantId } });
+    if (!restaurant) continue;
+
+    const { rating, userRatingCount } = blendRestaurantRating(
+      restaurant.rating,
+      restaurant.userRatingCount,
+      sample.rating,
+    );
+
+    await prisma.$transaction([
+      prisma.review.create({
+        data: {
+          orderId: order.id,
+          userId: order.userId,
+          restaurantId: order.restaurantId,
+          rating: sample.rating,
+          comment: sample.comment,
+          createdAt: new Date(order.createdAt.getTime() + 90 * 60_000),
+        },
+      }),
+      prisma.restaurant.update({
+        where: { id: order.restaurantId },
+        data: { rating, userRatingCount },
+      }),
+    ]);
+    created += 1;
+  }
+
+  console.log(`  Seeded ${created} sample reviews`);
 }
 
 async function main() {

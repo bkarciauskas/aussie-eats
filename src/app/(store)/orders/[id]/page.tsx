@@ -4,6 +4,8 @@ import { prisma } from "@/lib/db";
 import { formatAUD } from "@/lib/money";
 import { ORDER_STATUS_LABELS, parseDeliveryAddress } from "@/lib/orders";
 import { OrderStatusTimeline } from "@/components/order-status-timeline";
+import { OrderReviewPanel } from "@/components/order-review-panel";
+import { ReviewForm } from "@/components/review-form";
 import { OrderStatus } from "@/lib/roles";
 import { requireUser } from "@/lib/session";
 
@@ -18,12 +20,13 @@ export default async function OrderDetailPage({ params }: Props) {
   const { id } = await params;
   const order = await prisma.order.findFirst({
     where: { id, userId: session.userId },
-    include: { restaurant: true, items: true },
+    include: { restaurant: true, items: true, review: true },
   });
 
   if (!order) notFound();
 
   const address = parseDeliveryAddress(order.deliveryAddress);
+  const canReview = order.status === OrderStatus.delivered && !order.review;
 
   return (
     <div className="page-shell max-w-3xl">
@@ -56,6 +59,15 @@ export default async function OrderDetailPage({ params }: Props) {
           />
         </div>
       </div>
+
+      {canReview ? <ReviewForm orderId={order.id} /> : null}
+      {order.review ? (
+        <OrderReviewPanel
+          rating={order.review.rating}
+          comment={order.review.comment}
+          createdAt={order.review.createdAt}
+        />
+      ) : null}
 
       <div className="panel mt-4 space-y-4">
         <h2 className="font-display text-xl">Items</h2>

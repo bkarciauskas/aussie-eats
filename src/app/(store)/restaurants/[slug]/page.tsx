@@ -20,6 +20,13 @@ export default async function RestaurantDetailPage({ params }: Props) {
           items: { orderBy: { name: "asc" } },
         },
       },
+      reviews: {
+        orderBy: { createdAt: "desc" },
+        take: 8,
+        include: {
+          user: { select: { name: true } },
+        },
+      },
     },
   });
 
@@ -116,6 +123,38 @@ export default async function RestaurantDetailPage({ params }: Props) {
             </ul>
           </section>
         ))}
+
+        <section>
+          <h2 className="font-display text-2xl text-[var(--ae-green)]">Customer reviews</h2>
+          {restaurant.reviews.length === 0 ? (
+            <p className="mt-3 text-sm text-[var(--ae-ink-muted)]">
+              No AussieEats customer reviews yet. Order and rate after delivery to be the first.
+            </p>
+          ) : (
+            <ul className="mt-4 divide-y divide-[var(--ae-line)]">
+              {restaurant.reviews.map((review) => (
+                <li key={review.id} className="py-4">
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <p className="font-medium">
+                      {review.user.name}{" "}
+                      <span className="text-[var(--ae-green)]">{review.rating} ★</span>
+                    </p>
+                    <p className="text-xs text-[var(--ae-ink-soft)]">
+                      {new Intl.DateTimeFormat("en-AU", { dateStyle: "medium" }).format(
+                        review.createdAt,
+                      )}
+                    </p>
+                  </div>
+                  {review.comment ? (
+                    <p className="mt-1 text-sm text-[var(--ae-ink-muted)]">{review.comment}</p>
+                  ) : (
+                    <p className="mt-1 text-sm text-[var(--ae-ink-soft)]">No written review.</p>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
 
         <section>
           <h2 className="font-display text-2xl text-[var(--ae-green)]">Where to find us</h2>
