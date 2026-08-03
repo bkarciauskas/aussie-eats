@@ -91,8 +91,16 @@ npm run db:import-places # pull/refresh real venues into SQLite
 - **Catalog ingest:** `scripts/import-places.ts` → upsert by `placeId`; photos in `public/images/imported/`
 - **Auth:** email/password + iron-session cookies (`CUSTOMER` / `ADMIN` roles)
 - **Cart:** client React context + `localStorage`; server writes orders on checkout
-- **Money:** integer cents; display with `Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' })`
+- **Money:** integer cents (`unitPriceCents` / `priceCents`); display with `formatAUD` (`en-AU`)
+- **Location:** demo city pins in `localStorage`; `/restaurants` filters by city label via `matchesRestaurantCity`
 - **Images:** local assets under `public/images/`
+
+Deeper developer docs (browse/location, cart money, Places runbook, troubleshooting):
+
+- [docs/README.md](./docs/README.md)
+- [docs/architecture.md](./docs/architecture.md)
+- [docs/catalog-ingest.md](./docs/catalog-ingest.md)
+- [docs/troubleshooting.md](./docs/troubleshooting.md)
 
 ## Useful scripts
 
@@ -103,4 +111,5 @@ npm run db:import-places # pull/refresh real venues into SQLite
 | `npm run db:seed` | Upsert demo users/orders; bootstrap catalog if empty |
 | `npm run db:import-places` | One-shot Google Places → SQLite ingest |
 | `npm run db:reset` | Drop DB, migrate, seed |
+| `npm test` | Unit tests (`src/**/*.test.ts` via tsx) |
 | `npm run lint` | ESLint |
