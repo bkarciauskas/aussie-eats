@@ -35,6 +35,18 @@ export async function upsertRestaurantAction(formData: FormData) {
     return { error: "Name, description, city, and suburb are required." };
   }
 
+  if (
+    !Number.isFinite(deliveryFeeCents) ||
+    deliveryFeeCents < 0 ||
+    !Number.isFinite(minOrderCents) ||
+    minOrderCents < 0 ||
+    !Number.isFinite(rating) ||
+    rating < 0 ||
+    rating > 5
+  ) {
+    return { error: "Delivery fee, minimum order, and rating must be valid non-negative numbers." };
+  }
+
   const cuisineTags = JSON.stringify(
     cuisineTagsRaw
       .split(",")
@@ -44,6 +56,16 @@ export async function upsertRestaurantAction(formData: FormData) {
 
   const lat = Number(formData.get("lat") || -33.8688);
   const lng = Number(formData.get("lng") || 151.2093);
+  if (
+    !Number.isFinite(lat) ||
+    !Number.isFinite(lng) ||
+    lat < -90 ||
+    lat > 90 ||
+    lng < -180 ||
+    lng > 180
+  ) {
+    return { error: "Latitude and longitude must be valid coordinates." };
+  }
 
   if (id) {
     await prisma.restaurant.update({
@@ -144,8 +166,8 @@ export async function upsertMenuItemAction(formData: FormData) {
   const isAvailable =
     formData.get("isAvailable") === "on" || formData.get("isAvailable") === "true";
 
-  if (!categoryId || !name || !Number.isFinite(priceCents)) {
-    return { error: "Name, category, and price are required." };
+  if (!categoryId || !name || !Number.isFinite(priceCents) || priceCents < 0) {
+    return { error: "Name, category, and a non-negative price are required." };
   }
 
   if (id) {

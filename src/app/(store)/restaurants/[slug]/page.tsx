@@ -77,7 +77,7 @@ export default async function RestaurantDetailPage({ params }: Props) {
                   <AddToCartButton
                     menuItemId={item.id}
                     name={item.name}
-                    unitPriceCents={item.priceCents / 100}
+                    unitPriceCents={item.priceCents}
                     image={item.image}
                     restaurantId={restaurant.id}
                     restaurantSlug={restaurant.slug}

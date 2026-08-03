@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { canTransition } from "@/lib/orders";
+import { canTransition, parseOrderLineQuantity } from "@/lib/orders";
 import { OrderStatus, isOrderStatus } from "@/lib/roles";
 import { requireAdmin, requireUser } from "@/lib/session";
 
@@ -59,9 +59,8 @@ export async function placeOrderAction(input: PlaceOrderInput) {
   }[] = [];
 
   for (const line of input.items) {
-    const rawQty = Number(line.quantity);
-    const quantity = Math.floor(rawQty);
-    if (!Number.isFinite(rawQty) || quantity < 1) {
+    const quantity = parseOrderLineQuantity(line.quantity);
+    if (quantity == null) {
       return { error: "Invalid quantity in cart. Please refresh and try again." };
     }
     const item = byId.get(line.menuItemId);
@@ -122,6 +121,10 @@ export async function updateOrderStatusAction(orderId: string, status: OrderStat
   const admin = await requireAdmin();
   if (!admin) {
     return { error: "Admin access required." };
+  }
+
+  if (!isOrderStatus(status)) {
+    return { error: "Invalid status." };
   }
 
   const order = await prisma.order.findUnique({ where: { id: orderId } });
