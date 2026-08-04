@@ -246,6 +246,77 @@ async function run() {
       steps.push({ url, navOrders });
       passed = /\/admin\/?$/.test(new URL(url).pathname) && navOrders > 0;
       if (!passed) error = `admin dashboard assertions failed url=${url}`;
+    } else if (feature === "admin-reviews") {
+      await page.goto(baseUrl + "/admin/login", { waitUntil: "networkidle" });
+      await page.locator('input[name="email"]').fill("admin@aussieeats.local");
+      await page.locator('input[name="password"]').fill("admin1234");
+      await Promise.all([
+        page.waitForURL(/\/admin\/?$/),
+        page.getByRole("button", { name: /sign in/i }).click(),
+      ]);
+      await page.locator('nav[aria-label="Admin"] a[href="/admin/reviews"]').click();
+      await page.waitForURL(/\/admin\/reviews/);
+      await page.getByRole("heading", { name: "Reviews", exact: true }).waitFor();
+      await page.screenshot({ path: join(evidenceDir, "01-action-reviews-list.png"), fullPage: true });
+
+      const initialCountText = await page.locator("h2").first().textContent();
+      const initialCount = Number((initialCountText || "").match(/(\d+)/)?.[1] || 0);
+      const firstCustomer = (await page.locator("tbody tr").first().locator("td").nth(1).textContent())?.trim() || "";
+      steps.push({ action: "opened reviews page", initialCount, firstCustomer });
+
+      await page.locator('input[name="q"]').fill(firstCustomer.split(" ")[0] || "Demo");
+      await page.getByRole("button", { name: "Filter" }).click();
+      await page.waitForURL(/[?&]q=/);
+      await page.screenshot({ path: join(evidenceDir, "02-action-filtered.png"), fullPage: true });
+      const filteredUrl = page.url();
+      const filteredRows = await page.locator("tbody tr").count();
+      steps.push({ result: "applied search filter", filteredUrl, filteredRows });
+
+      await page.goto(baseUrl + "/admin/reviews", { waitUntil: "networkidle" });
+      const removeBtn = page.getByRole("button", { name: "Remove" }).first();
+      await removeBtn.click();
+      await page.getByText("Remove review?").waitFor();
+      await page.getByRole("button", { name: "Cancel" }).click();
+      await page.getByRole("button", { name: "Remove" }).first().waitFor();
+      const afterCancelCount = await page.locator("tbody tr").count();
+      steps.push({ result: "cancel left review in place", afterCancelCount });
+
+      const customerToRemove =
+        (await page.locator("tbody tr").first().locator("td").nth(1).textContent())?.trim() || "";
+      const restaurantToRemove =
+        (await page.locator("tbody tr").first().locator("td").nth(2).textContent())?.trim() || "";
+      await page.getByRole("button", { name: "Remove" }).first().click();
+      await page.getByRole("button", { name: "Confirm" }).click();
+      await page.waitForFunction(
+        (before) => {
+          const heading = document.querySelector("h2")?.textContent || "";
+          const n = Number(heading.match(/(\d+)/)?.[1] || 0);
+          return n === before - 1;
+        },
+        initialCount,
+        { timeout: 15000 },
+      );
+      await page.screenshot({ path: join(evidenceDir, "03-result-after-remove.png"), fullPage: true });
+      const afterRemoveText = await page.locator("h2").first().textContent();
+      const afterRemoveCount = Number((afterRemoveText || "").match(/(\d+)/)?.[1] || 0);
+      steps.push({
+        result: "confirmed remove",
+        customerToRemove,
+        restaurantToRemove,
+        afterRemoveCount,
+      });
+
+      const navReviews = await page.locator('nav[aria-label="Admin"] a[href="/admin/reviews"]').count();
+      const hasFilter = /[?&]q=/.test(filteredUrl) && filteredRows > 0;
+      passed =
+        navReviews > 0 &&
+        initialCount > 0 &&
+        hasFilter &&
+        afterCancelCount === initialCount &&
+        afterRemoveCount === initialCount - 1;
+      if (!passed) {
+        error = `admin-reviews assertions failed: nav=${navReviews} initial=${initialCount} filter=${hasFilter} cancel=${afterCancelCount} remove=${afterRemoveCount}`;
+      }
     } else if (feature === "place-order") {
       throw new Error(
         "place-order is mapped but multi-step; drive manually per features/place-order.md or extend drive.mjs",
