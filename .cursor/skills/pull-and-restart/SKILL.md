@@ -37,7 +37,7 @@ npm install
 
 `npm install` covers lockfile / dependency updates and runs `prisma generate` via `postinstall`.
 
-**Do not migrate or seed on every pull.** Local catalog/orders live in `prisma/dev.db` (gitignored SQLite). That file persists across pulls; it is not in git. Reseeding is unnecessary for a normal sync and can refresh sample orders you do not want to touch.
+**Do not migrate or seed on every pull.** Local catalog/orders/reviews live in `prisma/dev.db` (gitignored SQLite). That file persists across pulls; it is not in git. Reseeding is usually a no-op for orders/reviews once present; avoid `FORCE_SEED_ORDERS=1` unless you intend to rebuild demo history.
 
 After pull, check what changed:
 
@@ -61,7 +61,7 @@ test -f prisma/dev.db && echo "db ok" || echo "db missing"
 Notes:
 
 - `prisma migrate dev` when already applied is a cheap no-op ("already in sync") — safe if unsure whether migrations changed.
-- `db:seed` upserts demo users and **replaces sample orders**. It bootstraps handwritten restaurants **only if the catalog is empty**; it does **not** delete Places-imported rows.
+- `db:seed` upserts demo users and seeds sample orders/reviews **only when missing**. It bootstraps handwritten restaurants **only if the catalog is empty**; it does **not** delete Places-imported rows. Use `FORCE_SEED_ORDERS=1` only when you intentionally want to rebuild demo orders/reviews.
 - Never run `db:reset` as part of pull-and-restart unless the user explicitly asks.
 
 ### 4. Start the app

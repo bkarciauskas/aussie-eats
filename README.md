@@ -20,7 +20,7 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-`db:seed` upserts demo users and sample orders. If the restaurant catalog is empty it loads the handwritten fallback (~23 venues). It does **not** wipe Places-imported restaurants.
+`db:seed` upserts demo users. If the restaurant catalog is empty it loads the handwritten fallback (~23 venues). Sample orders and customer reviews are written once into SQLite and left alone on later seed runs (use `FORCE_SEED_ORDERS=1` to rebuild them). It does **not** wipe Places-imported restaurants.
 
 ### Large catalog (Google Places)
 
@@ -53,9 +53,10 @@ Uses Nearby Search / Text Search / Details / Photo. Expect several minutes and P
 ### Reset
 
 ```bash
-npm run db:seed          # users + orders; keeps restaurant catalog
-npm run db:reset         # drop DB, migrate, seed (catalog empty until import or fallback)
-npm run db:import-places # pull/refresh real venues into SQLite
+npm run db:seed                        # users; orders/reviews if missing; keeps catalog
+FORCE_SEED_ORDERS=1 npm run db:seed    # rebuild sample orders + reviews
+npm run db:reset                       # drop DB, migrate, seed (catalog empty until import or fallback)
+npm run db:import-places               # pull/refresh real venues into SQLite
 ```
 
 ## Presenter script (≈3 minutes)
@@ -108,7 +109,7 @@ Deeper developer docs (browse/location, cart money, Places runbook, troubleshoot
 | --- | --- |
 | `npm run dev` | Next.js dev server |
 | `npm run build` / `npm start` | Production build & serve |
-| `npm run db:seed` | Upsert demo users/orders; bootstrap catalog if empty |
+| `npm run db:seed` | Upsert demo users; seed orders/reviews if missing; bootstrap catalog if empty |
 | `npm run db:import-places` | One-shot Google Places → SQLite ingest |
 | `npm run db:reset` | Drop DB, migrate, seed |
 | `npm test` | Unit tests (`src/**/*.test.ts` via tsx) |
