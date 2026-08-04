@@ -7,8 +7,20 @@ import {
   parseOrderLineQuantity,
   parseStatusHistory,
 } from "@/lib/orders";
+import {
+  CardBrand,
+  PaymentMethodId,
+  formatCardPaymentLabel,
+  isCardBrand,
+  parsePaymentMethod,
+  paymentMethodLabel,
+} from "@/lib/payment";
 import { OrderStatus, isOrderStatus } from "@/lib/roles";
 import { requireAdmin, requireUser } from "@/lib/session";
+
+type PlaceOrderPayment =
+  | { method: "card"; cardLast4: string; cardBrand: CardBrand }
+  | { method: Exclude<PaymentMethodId, "card"> };
 
 export type PlaceOrderInput = {
   restaurantId: string;
@@ -21,6 +33,7 @@ export type PlaceOrderInput = {
     postcode: string;
     phone?: string;
   };
+  payment: PlaceOrderPayment;
 };
 
 export async function placeOrderAction(input: PlaceOrderInput) {
@@ -31,6 +44,30 @@ export async function placeOrderAction(input: PlaceOrderInput) {
 
   if (!input.items?.length) {
     return { error: "Your cart is empty." };
+  }
+
+  const paymentMethodId = parsePaymentMethod(input.payment?.method);
+  if (!paymentMethodId) {
+    return { error: "Please choose a valid payment method." };
+  }
+
+  let paymentMethod = paymentMethodLabel(paymentMethodId);
+  if (paymentMethodId === "card") {
+    if (input.payment.method !== "card") {
+      return { error: "Please complete the card details." };
+    }
+    const cardLast4 = input.payment.cardLast4;
+    if (!/^\d{4}$/.test(cardLast4) || !isCardBrand(input.payment.cardBrand)) {
+      return { error: "Please complete the card details." };
+    }
+    const cardLabel = formatCardPaymentLabel({
+      brand: input.payment.cardBrand,
+      last4: cardLast4,
+    });
+    if (!cardLabel) {
+      return { error: "Please complete the card details." };
+    }
+    paymentMethod = cardLabel;
   }
 
   const restaurant = await prisma.restaurant.findFirst({
@@ -114,7 +151,7 @@ export async function placeOrderAction(input: PlaceOrderInput) {
         postcode: postcode.trim(),
         phone: phone?.trim() || undefined,
       }),
-      paymentMethod: "Pay on delivery",
+      paymentMethod,
       items: { create: orderItems },
     },
   });

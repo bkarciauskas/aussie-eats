@@ -5,8 +5,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/components/cart-provider";
 import { DeliveryEta } from "@/components/delivery-eta";
+import { PaymentMethodPicker } from "@/components/payment-method-picker";
 import { placeOrderAction } from "@/app/actions/orders";
 import { formatAUD } from "@/lib/money";
+import {
+  PaymentMethodId,
+  cardDigits,
+  detectCardBrand,
+} from "@/lib/payment";
 
 type Props = {
   isLoggedIn: boolean;
@@ -22,6 +28,8 @@ type Props = {
 export function CheckoutForm({ isLoggedIn, defaultAddress }: Props) {
   const { cart, subtotalCents, totalCents, clearCart } = useCart();
   const [error, setError] = useState<string | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodId>("pay_on_delivery");
+  const [cardNumber, setCardNumber] = useState("");
   const [pending, startTransition] = useTransition();
   const router = useRouter();
 
@@ -63,6 +71,11 @@ export function CheckoutForm({ isLoggedIn, defaultAddress }: Props) {
         e.preventDefault();
         const fd = new FormData(e.currentTarget);
         setError(null);
+        const digits = cardDigits(cardNumber);
+        if (paymentMethod === "card" && (digits.length < 12 || digits.length > 19)) {
+          setError("Enter a valid demo card number with 12 to 19 digits.");
+          return;
+        }
         startTransition(async () => {
           const result = await placeOrderAction({
             restaurantId: cart.restaurantId!,
@@ -78,6 +91,14 @@ export function CheckoutForm({ isLoggedIn, defaultAddress }: Props) {
               postcode: String(fd.get("postcode") || ""),
               phone: String(fd.get("phone") || ""),
             },
+            payment:
+              paymentMethod === "card"
+                ? {
+                    method: "card",
+                    cardLast4: digits.slice(-4),
+                    cardBrand: detectCardBrand(digits),
+                  }
+                : { method: paymentMethod },
           });
           if (result?.error) {
             if ("needsAuth" in result && result.needsAuth) {
@@ -130,9 +151,12 @@ export function CheckoutForm({ isLoggedIn, defaultAddress }: Props) {
             <input name="phone" defaultValue="+61 400 000 000" placeholder="+61 …" />
           </label>
         </div>
-        <div className="rounded-lg border border-[var(--ae-line)] bg-[var(--ae-cream)] px-4 py-3 text-sm">
-          <strong>Payment:</strong> Pay on delivery (cash or card to rider — demo only, no charge)
-        </div>
+        <PaymentMethodPicker
+          method={paymentMethod}
+          cardNumber={cardNumber}
+          onMethodChange={setPaymentMethod}
+          onCardNumberChange={setCardNumber}
+        />
         {error ? <p className="text-sm text-[var(--ae-danger)]">{error}</p> : null}
       </div>
 
@@ -172,7 +196,11 @@ export function CheckoutForm({ isLoggedIn, defaultAddress }: Props) {
           </div>
         </div>
         <button type="submit" className="btn-primary w-full" disabled={pending}>
-          {pending ? "Placing order…" : "Place order"}
+          {pending
+            ? "Placing order…"
+            : paymentMethod === "pay_on_delivery"
+              ? "Place order"
+              : "Pay & place order"}
         </button>
       </aside>
     </form>
