@@ -12,7 +12,7 @@ export default function HomePage() {
           <h1 className="hero-headline">Australian flavours, delivered nearby.</h1>
           <p className="hero-support">
             Multi-vendor demo across Sydney, Melbourne, Brisbane, Perth, Adelaide, and Hobart —
-            AUD pricing, local seed data, zero external food APIs.
+            AUD pricing and local seed data.
           </p>
           <div className="hero-actions">
             <RestaurantSearch variant="hero" />

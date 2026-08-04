@@ -1,6 +1,6 @@
 ---
 name: AussieEats Greenfield Spec
-overview: "A self-contained product spec for a new repo: a local-only Australian multi-vendor food delivery web app (customer storefront + admin + auth) with colocated Next.js persistence—no external GraphQL API and no Enatega reverse-engineering."
+overview: "A self-contained product spec for a new repo: a local-only Australian multi-vendor food delivery web app (customer storefront + admin + auth) with colocated Next.js persistence."
 todos:
   - id: handoff-spec
     content: User pastes this plan/spec into a new-repo agent as the build brief
@@ -22,13 +22,13 @@ isProject: false
 
 # AussieEats — Greenfield Build Spec (for a new repo)
 
-Give the following document to an agent as the full build brief. Defaults already chosen from prior discussion: **greenfield** (not Enatega-compatible), **Australia/Sydney seed**, **customer UI + admin + login**, **fully local** (no hosted API).
+Give the following document to an agent as the full build brief. Defaults already chosen from prior discussion: **greenfield**, **Australia/Sydney seed**, **customer UI + admin + login**, **fully local** (no hosted food backend).
 
 ---
 
 ## 1. Product intent
 
-Build **AussieEats**, a presenter-ready multi-vendor food delivery demo that runs entirely on a laptop with zero egress to third-party food APIs.
+Build **AussieEats**, a presenter-ready multi-vendor food delivery demo that runs entirely on a laptop against local SQLite.
 
 
 | In scope (v1)                                                           | Out of scope (v1)                        |
@@ -37,10 +37,10 @@ Build **AussieEats**, a presenter-ready multi-vendor food delivery demo that run
 | Admin web: manage restaurants, menus, orders (basic)                    | Store/vendor native app                  |
 | Email/password login (customer + admin)                                 | Real Stripe/PayPal/Twilio                |
 | Australia seed data (Sydney-first, AUD)                                 | Maps provider dependency (optional stub) |
-| Single deployable app, local DB                                         | GraphQL / Enatega API compatibility      |
+| Single deployable app, local DB                                         | Separate remote food/backend service     |
 
 
-**Success criteria:** `npm install && npm run dev` → open customer site → log in → set Sydney location → browse seeded restaurants → add items → checkout → see order in history; open `/admin` → see same order and edit a menu item. No calls to `*.enatega.com` or any external food API.
+**Success criteria:** `npm install && npm run dev` → open customer site → log in → set Sydney location → browse seeded restaurants → add items → checkout → see order in history; open `/admin` → see same order and edit a menu item. Catalog and orders come from local SQLite.
 
 ---
 
@@ -49,11 +49,9 @@ Build **AussieEats**, a presenter-ready multi-vendor food delivery demo that run
 - **Next.js** (App Router) + **TypeScript** + **Tailwind CSS**
 - **Persistence:** **SQLite via Prisma** (file at `prisma/dev.db`). Survives refresh; no separate DB server.
 - **Auth:** simple session cookies (e.g. iron-session or NextAuth credentials). Demo passwords in seed only—never invent production OAuth.
-- **Data access:** Server Actions and/or Route Handlers in the same Next app—**no separate Express/GraphQL service**.
+- **Data access:** Server Actions and/or Route Handlers in the same Next app—**no separate Express service**.
 - **Package manager:** npm. **Node:** 20.x.
 - **Images:** local `/public` placeholders or seeded Unsplash-style URLs that degrade gracefully if offline (prefer local assets for restaurants/food).
-
-Do **not** copy Enatega GraphQL documents, Apollo clients, or `metricsGeneral` / `bop-auth` flows.
 
 ---
 
@@ -171,7 +169,7 @@ Document in README: “If the restaurant list is empty, your browser location ma
 
 ### Non-functional
 
-1. Works offline w.r.t. food APIs (local SQLite + local assets).
+1. Works offline for catalog and orders (local SQLite + local assets).
 2. Responsive enough for laptop demo (mobile-friendly layout, not native apps).
 3. `npm run db:seed` resets demo data idempotently or via documented reset.
 4. README with one-pager presenter script (login → Sydney pin → order → admin status change).
@@ -190,7 +188,7 @@ Document in README: “If the restaurant list is empty, your browser location ma
 
 ## 8. Explicitly do not do
 
-- Do not depend on Enatega, `aws-server-v2.enatega.com`, or GraphQL from the old monorepo.
+- Do not depend on a remote food catalog or order backend at runtime.
 - Do not build rider tracking maps, chat, support tickets, coupons, tipping, or subscriptions in v1.
 - Do not add Google Maps as a hard requirement (optional later); v1 can use suburb text + “Sydney demo location” button.
 - Do not implement real OTP, Firebase, Stripe, or PayPal.
@@ -228,12 +226,12 @@ New empty repo should contain:
 - [ ] Fresh clone works with documented commands only
 - [ ] Demo customer can complete an order against Sydney seed data
 - [ ] Admin can change that order’s status and edit a menu price
-- [ ] No runtime dependency on external food/backend APIs
+- [ ] Catalog and orders served from local SQLite (no remote food backend at runtime)
 - [ ] AUD formatting and AU address fields present in UI
 
 ---
 
 ## 12. One-line summary for the agent
 
-> Build AussieEats: a local-only Next.js + Prisma/SQLite multi-vendor food delivery demo with customer storefront and `/admin`, Sydney/AUD seed data, email/password auth, cart + COD checkout—no Enatega, no GraphQL reverse-engineering, no rider apps.
+> Build AussieEats: a local-only Next.js + Prisma/SQLite multi-vendor food delivery demo with customer storefront and `/admin`, Sydney/AUD seed data, email/password auth, cart + COD checkout—no rider apps.
 
