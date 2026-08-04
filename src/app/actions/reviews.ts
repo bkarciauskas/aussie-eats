@@ -7,8 +7,9 @@ import {
   blendRestaurantRating,
   normalizeReviewComment,
   parseReviewRating,
+  unblendRestaurantRating,
 } from "@/lib/reviews";
-import { requireUser } from "@/lib/session";
+import { requireAdmin, requireUser } from "@/lib/session";
 
 export type SubmitReviewInput = {
   orderId: string;
@@ -75,6 +76,50 @@ export async function submitReviewAction(input: SubmitReviewInput) {
 
   revalidatePath(`/orders/${order.id}`);
   revalidatePath(`/restaurants/${order.restaurant.slug}`);
+  revalidatePath("/restaurants");
+  revalidatePath("/orders");
+
+  return { ok: true as const };
+}
+
+export async function deleteReviewAction(reviewId: string) {
+  const admin = await requireAdmin();
+  if (!admin) {
+    return { error: "Admin access required." };
+  }
+
+  const id = typeof reviewId === "string" ? reviewId.trim() : "";
+  if (!id) {
+    return { error: "Review not found." };
+  }
+
+  const review = await prisma.review.findUnique({
+    where: { id },
+    include: { restaurant: true },
+  });
+
+  if (!review) {
+    return { error: "Review not found." };
+  }
+
+  const { rating, userRatingCount } = unblendRestaurantRating(
+    review.restaurant.rating,
+    review.restaurant.userRatingCount,
+    review.rating,
+  );
+
+  await prisma.$transaction([
+    prisma.review.delete({ where: { id: review.id } }),
+    prisma.restaurant.update({
+      where: { id: review.restaurantId },
+      data: { rating, userRatingCount },
+    }),
+  ]);
+
+  revalidatePath("/admin/reviews");
+  revalidatePath("/admin");
+  revalidatePath(`/orders/${review.orderId}`);
+  revalidatePath(`/restaurants/${review.restaurant.slug}`);
   revalidatePath("/restaurants");
   revalidatePath("/orders");
 

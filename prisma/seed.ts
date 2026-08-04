@@ -2,7 +2,7 @@ import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { restaurants } from "./seed-data";
 import { DEMO_CITIES } from "../src/lib/cities";
-import { blendRestaurantRating } from "../src/lib/reviews";
+import { blendRestaurantRating, unblendRestaurantRating } from "../src/lib/reviews";
 
 const Role = { CUSTOMER: "CUSTOMER", ADMIN: "ADMIN" } as const;
 const OrderStatus = {
@@ -177,12 +177,8 @@ async function clearOrdersAndReviews() {
 
     let { rating, userRatingCount } = restaurant;
     for (const submitted of ratings) {
-      if (userRatingCount <= 1) {
-        userRatingCount = 0;
-        break;
-      }
-      rating = (rating * userRatingCount - submitted) / (userRatingCount - 1);
-      userRatingCount -= 1;
+      ({ rating, userRatingCount } = unblendRestaurantRating(rating, userRatingCount, submitted));
+      if (userRatingCount === 0) break;
     }
 
     await prisma.restaurant.update({

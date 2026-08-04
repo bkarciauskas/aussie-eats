@@ -27,3 +27,24 @@ export function blendRestaurantRating(
   const rating = (safeCurrent * safeCount + submittedRating) / userRatingCount;
   return { rating, userRatingCount };
 }
+
+/** Inverse of blendRestaurantRating — remove one star from denormalized aggregates. */
+export function unblendRestaurantRating(
+  currentRating: number,
+  currentCount: number,
+  removedRating: number,
+): { rating: number; userRatingCount: number } {
+  const safeCount = Math.max(0, Math.trunc(currentCount));
+  const safeCurrent = Number.isFinite(currentRating) ? currentRating : 0;
+  if (safeCount <= 1) {
+    return { rating: safeCurrent, userRatingCount: 0 };
+  }
+  const userRatingCount = safeCount - 1;
+  const rating = (safeCurrent * safeCount - removedRating) / userRatingCount;
+  return { rating, userRatingCount };
+}
+
+export function formatReviewStars(rating: number): string {
+  const n = Math.min(MAX_REVIEW_RATING, Math.max(0, Math.trunc(rating)));
+  return `${"★".repeat(n)}${"☆".repeat(MAX_REVIEW_RATING - n)}`;
+}
