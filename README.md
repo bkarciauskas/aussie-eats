@@ -1,6 +1,6 @@
 # AussieEats
 
-Local-only multi-vendor food delivery demo (customer storefront + `/admin`) built with **Next.js App Router**, **TypeScript**, **Tailwind CSS**, and **Prisma + SQLite**. Catalog and orders live in local SQLite; browse never calls a remote food backend.
+Local-only multi-vendor food delivery demo (customer storefront + `/admin`) built with **Next.js App Router**, **TypeScript**, **Tailwind CSS**, and **Prisma + SQLite**.
 
 ## Requirements
 
@@ -24,7 +24,7 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ### Large catalog (Google Places)
 
-One-shot ingest into SQLite (~100 restaurants per major city, ~600 total). Runtime browse never calls Places.
+One-shot ingest into SQLite (~100 restaurants per major city, ~600 total).
 
 ```bash
 # Enable the (legacy) Places API on the Google Cloud project, then:
@@ -84,7 +84,6 @@ npm run db:import-places               # pull/refresh real venues into SQLite
 - [ ] Admin login blocks non-admins from `/admin`
 - [ ] Admin can edit a menu price and change an order’s status
 - [ ] `db:seed` does not delete an imported Places catalog
-- [ ] Runtime browse/order flows use local SQLite only (Places is ingest-time, not browse-time)
 
 ## Architecture notes
 

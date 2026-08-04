@@ -22,7 +22,7 @@ isProject: false
 
 # AussieEats — Greenfield Build Spec (for a new repo)
 
-Give the following document to an agent as the full build brief. Defaults already chosen from prior discussion: **greenfield**, **Australia/Sydney seed**, **customer UI + admin + login**, **fully local** (no hosted food backend).
+Give the following document to an agent as the full build brief. Defaults already chosen from prior discussion: **greenfield**, **Australia/Sydney seed**, **customer UI + admin + login**, **fully local**.
 
 ---
 
@@ -37,10 +37,10 @@ Build **AussieEats**, a presenter-ready multi-vendor food delivery demo that run
 | Admin web: manage restaurants, menus, orders (basic)                    | Store/vendor native app                  |
 | Email/password login (customer + admin)                                 | Real Stripe/PayPal/Twilio                |
 | Australia seed data (Sydney-first, AUD)                                 | Maps provider dependency (optional stub) |
-| Single deployable app, local DB                                         | Separate remote food/backend service     |
+| Single deployable app, local DB                                         | Multi-service backend split              |
 
 
-**Success criteria:** `npm install && npm run dev` → open customer site → log in → set Sydney location → browse seeded restaurants → add items → checkout → see order in history; open `/admin` → see same order and edit a menu item. Catalog and orders come from local SQLite.
+**Success criteria:** `npm install && npm run dev` → open customer site → log in → set Sydney location → browse seeded restaurants → add items → checkout → see order in history; open `/admin` → see same order and edit a menu item.
 
 ---
 
@@ -188,7 +188,6 @@ Document in README: “If the restaurant list is empty, your browser location ma
 
 ## 8. Explicitly do not do
 
-- Do not depend on a remote food catalog or order backend at runtime.
 - Do not build rider tracking maps, chat, support tickets, coupons, tipping, or subscriptions in v1.
 - Do not add Google Maps as a hard requirement (optional later); v1 can use suburb text + “Sydney demo location” button.
 - Do not implement real OTP, Firebase, Stripe, or PayPal.
@@ -226,7 +225,6 @@ New empty repo should contain:
 - [ ] Fresh clone works with documented commands only
 - [ ] Demo customer can complete an order against Sydney seed data
 - [ ] Admin can change that order’s status and edit a menu price
-- [ ] Catalog and orders served from local SQLite (no remote food backend at runtime)
 - [ ] AUD formatting and AU address fields present in UI
 
 ---
