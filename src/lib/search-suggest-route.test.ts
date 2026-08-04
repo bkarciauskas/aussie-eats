@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { GET } from "./route";
+import { GET } from "@/app/api/search/suggest/route";
 
 describe("GET /api/search/suggest", () => {
   it("returns an empty list when the query is blank", async () => {
