@@ -9,6 +9,7 @@ import {
   matchesRestaurantCity,
   resolveRestaurantQuery,
 } from "@/lib/cities";
+import { restaurantMatchesQuery } from "@/lib/restaurant-query";
 import { estimateDeliveryEta } from "@/lib/eta";
 import { formatHoursSummary, isOpenNow } from "@/lib/opening-hours";
 
@@ -52,12 +53,7 @@ export default async function RestaurantsPage({ searchParams }: Props) {
 
   const filtered = restaurants.filter((r) => {
     const tags = parseCuisineTags(r.cuisineTags);
-    const matchesQ =
-      !q ||
-      r.name.toLowerCase().includes(q.toLowerCase()) ||
-      r.suburb.toLowerCase().includes(q.toLowerCase()) ||
-      r.city.toLowerCase().includes(q.toLowerCase()) ||
-      tags.some((t) => t.toLowerCase().includes(q.toLowerCase()));
+    const matchesQ = restaurantMatchesQuery(r, q);
     const matchesCuisine =
       !cuisine || tags.some((t) => t.toLowerCase() === cuisine.toLowerCase());
     const matchesCity = matchesRestaurantCity(r.city, cityFilter);

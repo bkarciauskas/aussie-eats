@@ -3,7 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useTransition, type FormEvent } from "react";
 import { useLocation } from "@/components/location-provider";
-import { resolveRestaurantQuery } from "@/lib/cities";
+import { buildRestaurantSearchParams } from "@/lib/restaurant-query";
 
 type RestaurantSearchProps = {
   variant: "hero" | "header";
@@ -30,19 +30,15 @@ function RestaurantSearchForm({
 
     const fd = new FormData(e.currentTarget);
     const rawQ = String(fd.get("q") || "").trim();
-    // Keep cuisine from the current URL; city/q are resolved below.
-    const params = new URLSearchParams();
-    const cuisine = searchParams.get("cuisine");
-    if (cuisine) params.set("cuisine", cuisine);
-
-    // Typing a city name (e.g. "melbourne") should switch city, not fight the demo pin.
-    const resolved = resolveRestaurantQuery({
-      q: rawQ,
-      city: searchParams.get("city") || location?.suburb || location?.label || "",
+    const params = buildRestaurantSearchParams({
+      rawQ,
+      urlCity: searchParams.get("city"),
+      locationCity: location?.label,
+      locationLat: location?.lat,
+      locationLng: location?.lng,
+      locationPlace: location?.label,
+      cuisine: searchParams.get("cuisine"),
     });
-    if (resolved.q) params.set("q", resolved.q);
-    const cityOut = resolved.city || rawQ || searchParams.get("city") || "";
-    if (cityOut) params.set("city", cityOut);
 
     const qs = params.toString();
     startTransition(() => {

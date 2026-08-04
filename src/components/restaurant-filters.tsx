@@ -61,8 +61,8 @@ export function RestaurantFilters({
     else params.delete("q");
     if (cuisine) params.set("cuisine", cuisine);
     else params.delete("cuisine");
-    const cityOut = next.explicitCity ? current.city || resolved.city : resolved.city;
-    if (cityOut) params.set("city", cityOut);
+    // resolved.city is always a demo city id or empty — never echo stale free-text city params
+    if (resolved.city) params.set("city", resolved.city);
     else params.delete("city");
     const openNow = next.openNow ?? current.openNow;
     if (openNow) params.set("open", "1");

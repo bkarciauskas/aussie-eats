@@ -82,28 +82,31 @@ export function resolveRestaurantQuery(input: {
   explicitCity?: boolean;
 }): { q: string; city: string } {
   const rawQ = (input.q || "").trim();
+  // Only demo cities are valid filters — never treat free text (e.g. a restaurant
+  // name) as a city, or every venue is filtered out.
   const fromCity = findDemoCity(input.city);
 
   if (input.explicitCity) {
-    return { q: findDemoCity(rawQ) ? "" : rawQ, city: fromCity?.id || input.city?.trim() || "" };
+    return { q: findDemoCity(rawQ) ? "" : rawQ, city: fromCity?.id || "" };
   }
 
   const fromQ = findDemoCity(rawQ);
   if (fromQ) {
     return { q: "", city: fromQ.id };
   }
-  return { q: rawQ, city: fromCity?.id || input.city?.trim() || "" };
+  return { q: rawQ, city: fromCity?.id || "" };
 }
 
 /** Display label for a city id/label query param (DB stores labels like "Melbourne"). */
 export function demoCityLabel(cityFilter: string | null | undefined): string {
   if (!cityFilter) return "";
-  return findDemoCity(cityFilter)?.label || cityFilter.trim();
+  return findDemoCity(cityFilter)?.label || "";
 }
 
 /**
  * Match a restaurant's stored city label against a URL/filter value.
  * Accepts either stable ids (`melbourne`) or labels (`Melbourne`).
+ * Unknown city values are ignored (no filter) so stale URLs don't zero results.
  */
 export function matchesRestaurantCity(
   restaurantCity: string,
@@ -111,8 +114,6 @@ export function matchesRestaurantCity(
 ): boolean {
   if (!cityFilter) return true;
   const wanted = findDemoCity(cityFilter);
-  if (wanted) {
-    return restaurantCity.toLowerCase() === wanted.label.toLowerCase();
-  }
-  return restaurantCity.toLowerCase() === cityFilter.trim().toLowerCase();
+  if (!wanted) return true;
+  return restaurantCity.toLowerCase() === wanted.label.toLowerCase();
 }
