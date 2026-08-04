@@ -23,6 +23,9 @@ export async function SiteHeader() {
           <Link href="/orders" className="nav-link">
             Orders
           </Link>
+          <Link href="/favourites" className="nav-link">
+            Favourites
+          </Link>
           <CartBadge />
           {session.isLoggedIn ? (
             <form action={logoutAction}>

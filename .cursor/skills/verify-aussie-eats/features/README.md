@@ -9,6 +9,7 @@ Verification recipes from the user's point of view. Each file is a complete proo
 | Browse restaurants | [browse-restaurants.md](./browse-restaurants.md) | Storefront `/restaurants` |
 | Melbourne city browse | [melbourne-city-browse.md](./melbourne-city-browse.md) | Home city pin → `/restaurants?city=melbourne` |
 | Customer login | [customer-login.md](./customer-login.md) | Storefront `/login` |
+| Favourites | [favourites.md](./favourites.md) | Storefront `/restaurants` → `/favourites` |
 | Place order | [place-order.md](./place-order.md) | Cart → checkout → `/orders` |
 | Admin login + dashboard | [admin-login.md](./admin-login.md) | `/admin/login` → `/admin` |
 

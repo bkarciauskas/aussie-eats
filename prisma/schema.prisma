@@ -18,6 +18,7 @@ model User {
   addresses    Address[]
   orders       Order[]
   reviews      Review[]
+  favourites   Favourite[]
 }
 
 model Address {
@@ -58,8 +59,21 @@ model Restaurant {
   categories       Category[]
   orders           Order[]
   reviews          Review[]
+  favourites       Favourite[]
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt
+}
+
+model Favourite {
+  id           String     @id @default(cuid())
+  userId       String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  restaurantId String
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+
+  @@unique([userId, restaurantId])
+  @@index([userId, createdAt])
 }
 
 model Category {

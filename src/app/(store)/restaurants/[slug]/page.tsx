@@ -1,34 +1,39 @@
 import { notFound } from "next/navigation";
+import { listFavouriteRestaurantIds } from "@/app/actions/favourites";
 import { prisma } from "@/lib/db";
 import { formatAUD } from "@/lib/money";
 import { parseCuisineTags } from "@/lib/restaurants";
 import { AddToCartButton } from "@/components/add-to-cart-button";
 import { RestaurantLocationMap } from "@/components/restaurant-location-map";
 import { DeliveryEta } from "@/components/delivery-eta";
+import { FavouriteButton } from "@/components/favourite-button";
 import { formatHoursSummary, isOpenNow } from "@/lib/opening-hours";
 
 type Props = { params: Promise<{ slug: string }> };
 
 export default async function RestaurantDetailPage({ params }: Props) {
   const { slug } = await params;
-  const restaurant = await prisma.restaurant.findFirst({
-    where: { slug, isActive: true },
-    include: {
-      categories: {
-        orderBy: { sortOrder: "asc" },
-        include: {
-          items: { orderBy: { name: "asc" } },
+  const [restaurant, favouriteIds] = await Promise.all([
+    prisma.restaurant.findFirst({
+      where: { slug, isActive: true },
+      include: {
+        categories: {
+          orderBy: { sortOrder: "asc" },
+          include: {
+            items: { orderBy: { name: "asc" } },
+          },
+        },
+        reviews: {
+          orderBy: { createdAt: "desc" },
+          take: 8,
+          include: {
+            user: { select: { name: true } },
+          },
         },
       },
-      reviews: {
-        orderBy: { createdAt: "desc" },
-        take: 8,
-        include: {
-          user: { select: { name: true } },
-        },
-      },
-    },
-  });
+    }),
+    listFavouriteRestaurantIds(),
+  ]);
 
   if (!restaurant) notFound();
 
@@ -56,7 +61,15 @@ export default async function RestaurantDetailPage({ params }: Props) {
           <p className="text-sm uppercase tracking-[0.14em] text-white/70">
             {restaurant.suburb}, {restaurant.city}
           </p>
-          <h1 className="font-display mt-2 text-4xl sm:text-5xl">{restaurant.name}</h1>
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-4">
+            <h1 className="font-display text-4xl sm:text-5xl">{restaurant.name}</h1>
+            <FavouriteButton
+              restaurantId={restaurant.id}
+              restaurantName={restaurant.name}
+              initialIsFavourite={favouriteIds.includes(restaurant.id)}
+              variant="hero"
+            />
+          </div>
           <p className="mt-3 max-w-2xl text-white/85">{restaurant.description}</p>
           <div className="mt-4 flex flex-wrap gap-3 text-sm text-white/80">
             <span>{ratingLabel}</span>

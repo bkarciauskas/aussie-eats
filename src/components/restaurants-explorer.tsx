@@ -31,12 +31,15 @@ export function RestaurantsExplorer({
   restaurants,
   origin,
   locationLabel,
+  favouriteIds,
 }: {
   restaurants: ExplorerRestaurant[];
   origin: Origin | null;
   locationLabel?: string;
+  favouriteIds: string[];
 }) {
   const [activeId, setActiveId] = useState<string | null>(null);
+  const favouriteIdSet = new Set(favouriteIds);
 
   return (
     <MapProvider>
@@ -81,6 +84,7 @@ export function RestaurantsExplorer({
                 }
               >
                 <RestaurantCard
+                  id={r.id}
                   slug={r.slug}
                   name={r.name}
                   description={r.description}
@@ -95,6 +99,7 @@ export function RestaurantsExplorer({
                   distanceKm={r.distanceKm}
                   etaLabel={r.etaLabel}
                   hoursSummary={r.hoursSummary}
+                  isFavourite={favouriteIdSet.has(r.id)}
                 />
               </div>
             ))}
