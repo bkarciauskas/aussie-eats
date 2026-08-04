@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { ensureAdmin } from "@/lib/admin-guard";
 import { formatAUD } from "@/lib/money";
+import { paymentStatusLabel } from "@/lib/payment";
 import { OrderStatus } from "@/lib/roles";
 import { AdminOrderStatus } from "@/components/admin-order-status";
 
@@ -28,6 +29,7 @@ export default async function AdminOrdersPage() {
               <th>Restaurant</th>
               <th>Items</th>
               <th>Total</th>
+              <th>Payment</th>
               <th>Status</th>
             </tr>
           </thead>
@@ -46,6 +48,12 @@ export default async function AdminOrdersPage() {
                   {order.items.map((i) => `${i.quantity}× ${i.name}`).join(", ")}
                 </td>
                 <td>{formatAUD(order.totalCents)}</td>
+                <td>
+                  <span>{order.paymentMethod}</span>
+                  <span className="mt-1 block text-xs text-[var(--ae-ink-muted)]">
+                    {paymentStatusLabel(order.paymentMethod)}
+                  </span>
+                </td>
                 <td>
                   <AdminOrderStatus orderId={order.id} status={order.status as OrderStatus} />
                 </td>

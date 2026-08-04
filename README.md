@@ -64,7 +64,7 @@ npm run db:import-places               # pull/refresh real venues into SQLite
 1. Open `/` — brand hero **AussieEats**, use the hero **Find** search (e.g. `burger` or `Fitzroy`), or pick a demo city below then search again (city scopes results).
 2. On `/restaurants`, refine with **City** / **Cuisine** / **Open now**, or use the header search from any storefront page.
 3. Open a restaurant → note rating count, hours, ETA → **Add** items → **Cart** → **Checkout**.
-4. Log in as `demo@aussieeats.local` / `demo1234` if prompted → confirm AU address → **Place order** (Pay on delivery).
+4. Log in as `demo@aussieeats.local` / `demo1234` if prompted → confirm AU address → choose Pay on delivery, Card, Apple Pay, or Google Pay (all mocked) → place the order.
 5. Confirm the order under **Orders** and open detail for the status timeline.
 6. Open `/admin/login` → `admin@aussieeats.local` / `admin1234`.
 7. Dashboard shows counts; **Orders** → advance status (`pending` → `preparing` → …).
@@ -79,7 +79,7 @@ npm run db:import-places               # pull/refresh real venues into SQLite
 - [ ] Seed / import includes restaurants across Sydney, Melbourne, Brisbane, Perth, Adelaide, and Hobart
 - [ ] Open now filter, rating counts, hours, and delivery ETA appear when data/location allow
 - [ ] Cart works without login; checkout requires login
-- [ ] Placing an order creates status `pending`, clears cart, shows in `/orders` with a timeline
+- [ ] Placing an order with any mocked payment method creates status `pending`, clears cart, and shows the payment method in `/orders`
 - [ ] AUD formatting (`$x.xx`) and AU address fields (suburb / NSW / postcode / +61) appear
 - [ ] Admin login blocks non-admins from `/admin`
 - [ ] Admin can edit a menu price and change an order’s status

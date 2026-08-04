@@ -40,8 +40,8 @@ export default function HomePage() {
           <div>
             <h2 className="font-display text-2xl text-[var(--ae-green)]">Order in minutes</h2>
             <p className="mt-2 text-sm text-[var(--ae-ink-muted)]">
-              Build a cart, check out with Pay on delivery, and track status from pending through
-              delivered.
+              Build a cart, choose card, wallet, or Pay on delivery, and track status from pending
+              through delivered.
             </p>
           </div>
           <div>

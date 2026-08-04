@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { formatAUD } from "@/lib/money";
 import { ORDER_STATUS_LABELS, parseDeliveryAddress } from "@/lib/orders";
+import { paymentStatusLabel } from "@/lib/payment";
 import { OrderStatusTimeline } from "@/components/order-status-timeline";
 import { OrderReviewPanel } from "@/components/order-review-panel";
 import { ReviewForm } from "@/components/review-form";
@@ -94,7 +95,12 @@ export default async function OrderDetailPage({ params }: Props) {
             <span>Total</span>
             <span>{formatAUD(order.totalCents)}</span>
           </div>
-          <p className="mt-3 text-[var(--ae-ink-soft)]">Payment: {order.paymentMethod}</p>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[var(--ae-ink-soft)]">
+            <span>Payment: {order.paymentMethod}</span>
+            <span className="rounded-full bg-[var(--ae-cream)] px-3 py-1 text-xs font-semibold">
+              {paymentStatusLabel(order.paymentMethod)}
+            </span>
+          </div>
         </div>
       </div>
 
