@@ -182,6 +182,53 @@ async function run() {
       steps.push({ url: page.url(), logoutVisible: logout > 0 });
       passed = logout > 0;
       if (!passed) error = "Log out control not visible after login";
+    } else if (feature === "favourites") {
+      await page.goto(baseUrl + "/login?next=/restaurants", { waitUntil: "networkidle" });
+      await page.locator('input[name="email"]').fill("demo@aussieeats.local");
+      await page.locator('input[name="password"]').fill("demo1234");
+      await Promise.all([
+        page.waitForURL(/\/restaurants\/?$/),
+        page.getByRole("button", { name: /sign in/i }).click(),
+      ]);
+
+      const firstCard = page.locator("article").filter({ has: page.locator("a.restaurant-row") }).first();
+      const restaurantName = (await firstCard.locator("h2").textContent())?.trim() || "";
+      const heart = firstCard.getByRole("button", { name: /favourites/i });
+      if ((await heart.getAttribute("aria-pressed")) === "true") {
+        await heart.click();
+        await heart.waitFor({ state: "visible" });
+      }
+
+      await page.screenshot({
+        path: join(evidenceDir, "01-action-save-restaurant.png"),
+        fullPage: true,
+      });
+      await heart.click();
+      await page.waitForFunction(
+        (name) =>
+          document.querySelector(`button[aria-label="Remove ${name} from favourites"]`)?.getAttribute("aria-pressed") ===
+          "true",
+        restaurantName,
+      );
+      steps.push({ action: "saved restaurant from browse list", restaurantName });
+
+      await page.locator('nav[aria-label="Primary"] a[href="/favourites"]').click();
+      await page.waitForURL(/\/favourites\/?$/);
+      await page.getByRole("heading", { name: "Favourites" }).waitFor();
+      await page.reload({ waitUntil: "networkidle" });
+      const persistedCard = page.locator("article").filter({ hasText: restaurantName });
+      const persisted = (await persistedCard.count()) > 0;
+      await page.screenshot({
+        path: join(evidenceDir, "02-result-saved-favourite.png"),
+        fullPage: true,
+      });
+      steps.push({ result: "favourite persisted after reload", restaurantName, persisted });
+      passed = Boolean(restaurantName) && persisted;
+      if (!passed) error = `favourite did not persist for ${restaurantName || "unknown restaurant"}`;
+
+      if (persisted) {
+        await persistedCard.getByRole("button", { name: /Remove .* from favourites/i }).click();
+      }
     } else if (feature === "admin-login") {
       await page.goto(baseUrl + "/admin/login", { waitUntil: "networkidle" });
       await page.locator('input[name="email"]').fill("admin@aussieeats.local");

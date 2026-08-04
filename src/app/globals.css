@@ -189,6 +189,56 @@ button:focus-visible {
   opacity: 0.92;
 }
 
+.favourite-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  border: 1px solid var(--ae-line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--ae-accent);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+
+.favourite-button:hover {
+  border-color: var(--ae-accent);
+  background: var(--ae-accent-soft);
+  transform: translateY(-1px);
+}
+
+.favourite-button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.favourite-button svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.favourite-button-card {
+  width: 2.4rem;
+  height: 2.4rem;
+}
+
+.favourite-button-hero {
+  padding: 0.65rem 1rem;
+  border-color: rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  backdrop-filter: blur(8px);
+}
+
+.favourite-button-hero:hover {
+  border-color: #fff;
+  background: rgba(255, 255, 255, 0.24);
+}
+
 .restaurant-thumb {
   width: 7.5rem;
   height: 7.5rem;

@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { listFavouriteRestaurantIds } from "@/app/actions/favourites";
 import { prisma } from "@/lib/db";
 import { RestaurantFilters } from "@/components/restaurant-filters";
 import { RestaurantsExplorer, type ExplorerRestaurant } from "@/components/restaurants-explorer";
@@ -42,10 +43,13 @@ export default async function RestaurantsPage({ searchParams }: Props) {
   const cityPin = findDemoCity(cityFilter);
   const etaOrigin = origin ?? (cityPin ? { lat: cityPin.lat, lng: cityPin.lng } : null);
 
-  const restaurants = await prisma.restaurant.findMany({
-    where: { isActive: true },
-    orderBy: [{ city: "asc" }, { rating: "desc" }, { name: "asc" }],
-  });
+  const [restaurants, favouriteIds] = await Promise.all([
+    prisma.restaurant.findMany({
+      where: { isActive: true },
+      orderBy: [{ city: "asc" }, { rating: "desc" }, { name: "asc" }],
+    }),
+    listFavouriteRestaurantIds(),
+  ]);
 
   const allCuisines = Array.from(
     new Set(restaurants.flatMap((r) => parseCuisineTags(r.cuisineTags))),
@@ -140,6 +144,7 @@ export default async function RestaurantsPage({ searchParams }: Props) {
           restaurants={withDistance}
           origin={origin}
           locationLabel={locationLabel}
+          favouriteIds={favouriteIds}
         />
       </Suspense>
     </div>
