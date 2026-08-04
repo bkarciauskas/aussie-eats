@@ -338,6 +338,11 @@ button:focus-visible {
   box-shadow: 0 0.75rem 2rem rgba(28, 36, 28, 0.18);
 }
 
+.hero-search .search-suggest {
+  top: auto;
+  bottom: calc(100% + 0.4rem);
+}
+
 .search-suggest-heading {
   display: flex;
   align-items: center;
