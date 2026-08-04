@@ -228,6 +228,7 @@ async function run() {
 
       if (persisted) {
         await persistedCard.getByRole("button", { name: /Remove .* from favourites/i }).click();
+        await persistedCard.waitFor({ state: "detached" });
       }
     } else if (feature === "admin-login") {
       await page.goto(baseUrl + "/admin/login", { waitUntil: "networkidle" });
