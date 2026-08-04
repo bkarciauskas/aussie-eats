@@ -199,11 +199,43 @@ async function clearOrdersAndReviews() {
   await prisma.order.deleteMany();
 }
 
+async function seedReviewsOntoExistingOrders() {
+  const deliveredOrders = await prisma.order.findMany({
+    where: { status: OrderStatus.delivered, review: null },
+    select: { id: true, userId: true, restaurantId: true, createdAt: true },
+    orderBy: { createdAt: "desc" },
+  });
+  await seedSampleReviews(deliveredOrders);
+}
+
 async function seedDenseOrders(
   customers: { id: string; email: string }[],
 ) {
-  // Refresh sample order history without touching the restaurant catalog.
-  await clearOrdersAndReviews();
+  // Default: keep orders/reviews in SQLite once seeded (same idea as restaurant bootstrap).
+  // Set FORCE_SEED_ORDERS=1 to wipe and rebuild sample orders + reviews.
+  const forceRefresh = process.env.FORCE_SEED_ORDERS === "1";
+  const existingReviewCount = await prisma.review.count();
+  const existingOrderCount = await prisma.order.count();
+
+  if (!forceRefresh && existingReviewCount > 0) {
+    console.log(
+      `  Orders/reviews already in DB (${existingOrderCount} orders, ${existingReviewCount} reviews) — skipping refresh`,
+    );
+    return;
+  }
+
+  if (!forceRefresh && existingOrderCount > 0) {
+    console.log(
+      `  Orders already present (${existingOrderCount}) — seeding reviews onto delivered orders only`,
+    );
+    await seedReviewsOntoExistingOrders();
+    return;
+  }
+
+  if (forceRefresh) {
+    console.log("  FORCE_SEED_ORDERS=1 — clearing and rebuilding sample orders/reviews");
+    await clearOrdersAndReviews();
+  }
 
   const catalog = await prisma.restaurant.findMany({
     where: { isActive: true },
@@ -355,6 +387,7 @@ async function main() {
 
   const restaurantCount = await prisma.restaurant.count();
   const orderCount = await prisma.order.count();
+  const reviewCount = await prisma.review.count();
   const byCity = await prisma.restaurant.groupBy({
     by: ["city"],
     _count: { _all: true },
@@ -366,11 +399,13 @@ async function main() {
   console.log("  Admin:    admin@aussieeats.local / admin1234");
   console.log(`  Restaurants: ${restaurantCount}`);
   console.log(`  Orders: ${orderCount}`);
+  console.log(`  Reviews: ${reviewCount}`);
   console.log(
     "  Cities:",
     byCity.map((r) => `${r.city} (${r._count._all})`).join(", "),
   );
   console.log("  Tip: run `npm run db:import-places` once to pull ~100 real venues per city.");
+  console.log("  Tip: FORCE_SEED_ORDERS=1 npm run db:seed to rebuild sample orders/reviews.");
 }
 
 main()

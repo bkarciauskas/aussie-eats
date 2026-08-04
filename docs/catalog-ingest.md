@@ -11,7 +11,7 @@ One-shot script that fills the restaurant catalog with real venues. **Browse nev
 | Refresh venue metadata / photos | Re-run import (upserts by `placeId`) |
 | Wipe everything including Places catalog | `npm run db:reset`, then seed and optionally import |
 
-`db:seed` upserts users and **replaces sample orders**. It bootstraps handwritten restaurants **only if the catalog is empty** — it does not delete Places-imported rows.
+`db:seed` upserts users and seeds sample orders/reviews **only when they are missing**. It bootstraps handwritten restaurants **only if the catalog is empty** — it does not delete Places-imported rows. Use `FORCE_SEED_ORDERS=1 npm run db:seed` to wipe and rebuild sample orders/reviews.
 
 ## Prerequisites
 
@@ -53,7 +53,7 @@ Venue fields updated on re-import include name, description, image, cuisine tags
 ## Verify after import
 
 ```bash
-npm run db:seed   # safe: keeps catalog, refreshes demo orders
+npm run db:seed   # safe: keeps catalog and existing orders/reviews
 npm run dev
 ```
 

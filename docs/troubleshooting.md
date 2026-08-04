@@ -37,7 +37,7 @@ Quick fixes for issues that have already bitten this codebase. Verify against cu
 | --- | --- | --- |
 | “Open now” wrong for a city | Missing `openingHoursJson` or wrong city label for TZ | Hours JSON from Places; TZ keyed by city label in `opening-hours.ts`. Fallback is `isOpen`. |
 | No ETA label | No origin and no city pin | Set demo city or pass `lat`/`lng` on `/restaurants`. |
-| Order timeline empty / stuck | Missing `statusHistoryJson` | New orders seed history on create; admin transitions append. Re-seed refreshes sample orders. |
+| Order timeline empty / stuck | Missing `statusHistoryJson` | New orders seed history on create; admin transitions append. `FORCE_SEED_ORDERS=1 npm run db:seed` rebuilds sample orders. |
 
 ## Dev / verify
 
