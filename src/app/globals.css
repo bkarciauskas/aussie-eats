@@ -271,6 +271,7 @@ button:focus-visible {
 
 .hero-search {
   display: flex;
+  position: relative;
   width: 100%;
   max-width: 32rem;
   gap: 0.5rem;
@@ -299,6 +300,7 @@ button:focus-visible {
 
 .header-search {
   display: flex;
+  position: relative;
   width: 100%;
   gap: 0.4rem;
   align-items: stretch;
@@ -320,6 +322,96 @@ button:focus-visible {
   flex-shrink: 0;
   padding: 0.45rem 0.85rem;
   font-size: 0.85rem;
+}
+
+.search-suggest {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 0.4rem);
+  left: 0;
+  width: 100%;
+  overflow: hidden;
+  border: 1px solid var(--ae-line);
+  border-radius: 0.65rem;
+  background: #fff;
+  color: var(--ae-ink);
+  box-shadow: 0 0.75rem 2rem rgba(28, 36, 28, 0.18);
+}
+
+.hero-search .search-suggest {
+  top: auto;
+  bottom: calc(100% + 0.4rem);
+}
+
+.search-suggest-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 0.75rem 0.35rem;
+  color: var(--ae-ink-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.search-suggest-heading button {
+  border: 0;
+  background: transparent;
+  color: var(--ae-green);
+  cursor: pointer;
+  font: inherit;
+  text-transform: none;
+}
+
+.search-suggest ul {
+  margin: 0;
+  padding: 0.3rem;
+  list-style: none;
+}
+
+.search-suggest li > button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border: 0;
+  border-radius: 0.45rem;
+  padding: 0.65rem 0.7rem;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.search-suggest li > button:hover,
+.search-suggest li > button.is-active {
+  background: var(--ae-cream);
+}
+
+.search-suggest li > button > span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.search-suggest strong {
+  overflow: hidden;
+  font-size: 0.9rem;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.search-suggest small {
+  color: var(--ae-ink-muted);
+  font-size: 0.75rem;
+}
+
+.search-suggest-kind {
+  flex-shrink: 0;
 }
 
 .hero .btn-primary {
