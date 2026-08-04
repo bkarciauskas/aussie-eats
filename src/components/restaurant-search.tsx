@@ -28,23 +28,6 @@ type RestaurantSearchProps = {
   className?: string;
 };
 
-type DebugPayload = {
-  hypothesisId: string;
-  location: string;
-  message: string;
-  data: Record<string, unknown>;
-  timestamp: number;
-};
-
-function writeDebugLog(payload: DebugPayload) {
-  void fetch("/api/debug/ui-log", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(payload),
-    keepalive: true,
-  });
-}
-
 function RestaurantSearchForm({
   variant,
   initialQ = "",
@@ -102,11 +85,7 @@ function RestaurantSearchForm({
           "suggestions" in data &&
           Array.isArray(data.suggestions)
         ) {
-          const validSuggestions = data.suggestions.filter(isSearchSuggestion);
-          // #region agent log
-          writeDebugLog({ hypothesisId: "A", location: "restaurant-search.tsx:fetch-suggestions", message: "Suggestion response passed validation", data: { responseCount: data.suggestions.length, validCount: validSuggestions.length, kinds: validSuggestions.map((suggestion) => suggestion.kind) }, timestamp: Date.now() });
-          // #endregion
-          setSuggestions(validSuggestions);
+          setSuggestions(data.suggestions.filter(isSearchSuggestion));
           setActiveIndex(-1);
         }
       } catch (error) {
@@ -121,23 +100,6 @@ function RestaurantSearchForm({
       controller.abort();
     };
   }, [query]);
-
-  useEffect(() => {
-    if (!open || suggestions.length === 0) return;
-
-    const listbox = document.getElementById(listboxId);
-    const dropdown = listbox?.parentElement;
-    const hero = formRef.current?.closest(".hero");
-    const optionRects = Array.from(listbox?.children ?? []).map((option) => {
-      const rect = option.getBoundingClientRect();
-      return { top: rect.top, bottom: rect.bottom, height: rect.height };
-    });
-    const dropdownRect = dropdown?.getBoundingClientRect();
-    const heroRect = hero?.getBoundingClientRect();
-    // #region agent log
-    writeDebugLog({ hypothesisId: "B,C,D", location: "restaurant-search.tsx:suggestions-layout", message: "Rendered suggestion geometry", data: { stateCount: suggestions.length, domOptionCount: listbox?.children.length ?? 0, optionRects, dropdownRect: dropdownRect ? { top: dropdownRect.top, bottom: dropdownRect.bottom, height: dropdownRect.height, scrollHeight: dropdown?.scrollHeight } : null, heroRect: heroRect ? { top: heroRect.top, bottom: heroRect.bottom, height: heroRect.height, overflow: hero ? getComputedStyle(hero).overflow : null } : null, viewportHeight: window.innerHeight, dropdownOverflow: dropdown ? getComputedStyle(dropdown).overflow : null, dropdownZIndex: dropdown ? getComputedStyle(dropdown).zIndex : null }, timestamp: Date.now() });
-    // #endregion
-  }, [listboxId, open, suggestions]);
 
   function recentSuggestions(): RecentSuggestion[] {
     return loadRecentSearches(window.localStorage)
@@ -178,9 +140,6 @@ function RestaurantSearchForm({
   }
 
   function selectSuggestion(suggestion: SearchSuggestion) {
-    // #region agent log
-    writeDebugLog({ hypothesisId: "A,D", location: "restaurant-search.tsx:selectSuggestion", message: "Suggestion selection invoked", data: { kind: suggestion.kind }, timestamp: Date.now() });
-    // #endregion
     pushRecentSearch(window.localStorage, suggestion.label);
     setQuery(suggestion.label);
 
@@ -248,9 +207,6 @@ function RestaurantSearchForm({
 
     if (event.key === "ArrowDown") {
       event.preventDefault();
-      // #region agent log
-      writeDebugLog({ hypothesisId: "A,B", location: "restaurant-search.tsx:onKeyDown", message: "Keyboard navigation reached suggestions", data: { key: event.key, stateCount: suggestions.length, activeIndex }, timestamp: Date.now() });
-      // #endregion
       setActiveIndex((current) => (current + 1) % suggestions.length);
     } else if (event.key === "ArrowUp") {
       event.preventDefault();
