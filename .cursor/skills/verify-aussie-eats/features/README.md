@@ -5,6 +5,7 @@ Verification recipes from the user's point of view. Each file is a complete proo
 | Feature | File | Surface |
 | --- | --- | --- |
 | Home hero search | [home-hero-search.md](./home-hero-search.md) | Storefront `/` → `/restaurants?q=…` |
+| Search suggestions | [search-suggestions.md](./search-suggestions.md) | Storefront hero/header typeahead + recent searches |
 | Browse restaurants | [browse-restaurants.md](./browse-restaurants.md) | Storefront `/restaurants` |
 | Melbourne city browse | [melbourne-city-browse.md](./melbourne-city-browse.md) | Home city pin → `/restaurants?city=melbourne` |
 | Customer login | [customer-login.md](./customer-login.md) | Storefront `/login` |
