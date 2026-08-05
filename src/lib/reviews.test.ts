@@ -2,8 +2,10 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   blendRestaurantRating,
+  formatStarRating,
   normalizeReviewComment,
   parseReviewRating,
+  unblendRestaurantRating,
   MAX_REVIEW_COMMENT_LENGTH,
 } from "./reviews";
 
@@ -42,5 +44,36 @@ describe("blendRestaurantRating", () => {
     const next = blendRestaurantRating(4.5, 0, 3);
     assert.equal(next.userRatingCount, 1);
     assert.equal(next.rating, 3);
+  });
+});
+
+describe("unblendRestaurantRating", () => {
+  it("decrements count and restores the prior average", () => {
+    const next = unblendRestaurantRating(4.5, 2, 5);
+    assert.equal(next.userRatingCount, 1);
+    assert.equal(next.rating, 4);
+  });
+
+  it("zeros the count when removing the last review", () => {
+    const next = unblendRestaurantRating(5, 1, 5);
+    assert.equal(next.userRatingCount, 0);
+    assert.equal(next.rating, 5);
+  });
+
+  it("is the inverse of blendRestaurantRating", () => {
+    const baseline = { rating: 4.2, count: 3 };
+    const blended = blendRestaurantRating(baseline.rating, baseline.count, 5);
+    const restored = unblendRestaurantRating(blended.rating, blended.userRatingCount, 5);
+    assert.equal(restored.userRatingCount, baseline.count);
+    assert.ok(Math.abs(restored.rating - baseline.rating) < 1e-12);
+  });
+});
+
+describe("formatStarRating", () => {
+  it("renders filled and empty stars", () => {
+    assert.equal(formatStarRating(5), "★★★★★");
+    assert.equal(formatStarRating(4), "★★★★☆");
+    assert.equal(formatStarRating(3), "★★★☆☆");
+    assert.equal(formatStarRating(1), "★☆☆☆☆");
   });
 });

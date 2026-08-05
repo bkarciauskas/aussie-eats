@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { adminLogoutAction } from "@/app/actions/auth";
+import { AdminNavLinks } from "@/components/admin-nav-links";
 import { getSession } from "@/lib/session";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -14,19 +15,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <Link href="/admin" className="font-display text-lg font-bold text-[var(--ae-green)]">
               AussieEats Admin
             </Link>
-            {isAdmin ? (
-              <nav className="flex gap-2 text-sm" aria-label="Admin">
-                <Link href="/admin" className="nav-link">
-                  Dashboard
-                </Link>
-                <Link href="/admin/restaurants" className="nav-link">
-                  Restaurants
-                </Link>
-                <Link href="/admin/orders" className="nav-link">
-                  Orders
-                </Link>
-              </nav>
-            ) : null}
+            {isAdmin ? <AdminNavLinks /> : null}
           </div>
           <div className="flex items-center gap-2 text-sm">
             <Link href="/" className="nav-link">

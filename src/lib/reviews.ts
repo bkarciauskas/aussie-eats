@@ -27,3 +27,29 @@ export function blendRestaurantRating(
   const rating = (safeCurrent * safeCount + submittedRating) / userRatingCount;
   return { rating, userRatingCount };
 }
+
+/**
+ * Inverse of blendRestaurantRating — remove one star from denormalized aggregates.
+ * When the last review is removed, count becomes 0 and the rating value is left unchanged
+ * (storefront hides the count-based label when userRatingCount is 0).
+ */
+export function unblendRestaurantRating(
+  currentRating: number,
+  currentCount: number,
+  removedRating: number,
+): { rating: number; userRatingCount: number } {
+  const safeCount = Math.max(0, Math.trunc(currentCount));
+  const safeCurrent = Number.isFinite(currentRating) ? currentRating : 0;
+  if (safeCount <= 1) {
+    return { rating: safeCurrent, userRatingCount: 0 };
+  }
+  const userRatingCount = safeCount - 1;
+  const rating = (safeCurrent * safeCount - removedRating) / userRatingCount;
+  return { rating, userRatingCount };
+}
+
+/** Filled/empty stars for admin list display (e.g. ★★★★☆). */
+export function formatStarRating(rating: number): string {
+  const filled = Math.min(MAX_REVIEW_RATING, Math.max(0, Math.trunc(rating)));
+  return `${"★".repeat(filled)}${"☆".repeat(MAX_REVIEW_RATING - filled)}`;
+}

@@ -24,4 +24,4 @@ Manual equivalent:
 
 - URL is `/admin` (not bounced to login)
 - Dashboard shows restaurant/order counts (seeded non-zero)
-- Admin nav includes **Orders** and **Restaurants**
+- Admin nav includes **Orders**, **Restaurants**, and **Reviews**

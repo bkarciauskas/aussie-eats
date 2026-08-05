@@ -12,5 +12,6 @@ Verification recipes from the user's point of view. Each file is a complete proo
 | Favourites | [favourites.md](./favourites.md) | Storefront `/restaurants` → `/favourites` |
 | Place order | [place-order.md](./place-order.md) | Cart → checkout → `/orders` |
 | Admin login + dashboard | [admin-login.md](./admin-login.md) | `/admin/login` → `/admin` |
+| Admin reviews | [admin-reviews.md](./admin-reviews.md) | `/admin/reviews` list, filter, remove |
 
 Start with the feature that matches the change under test. `home-hero-search` is the default smoke proof for storefront search wiring.
