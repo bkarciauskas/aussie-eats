@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+pymongo
+pydantic
+pydantic-settings
+pyjwt
+bcrypt
+python-multipart
+pytest
+httpx
+pytest-asyncio
