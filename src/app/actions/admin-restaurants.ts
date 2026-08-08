@@ -2,16 +2,21 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/db";
-import { serializeTags, unionDietaryTags } from "@/lib/dietary";
+import {
+  ApiError,
+  toggleMenuItemAvailability,
+  toggleRestaurantActive,
+  upsertCategory,
+  upsertMenuItem,
+  upsertRestaurant,
+} from "@/lib/backend";
 import { requireAdmin } from "@/lib/session";
 
-function slugify(name: string) {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "")
-    .slice(0, 60);
+function actionError(err: unknown, fallback: string): string {
+  if (err instanceof ApiError) {
+    return err.detail || fallback;
+  }
+  return fallback;
 }
 
 export async function upsertRestaurantAction(formData: FormData) {
@@ -48,12 +53,10 @@ export async function upsertRestaurantAction(formData: FormData) {
     return { error: "Delivery fee, minimum order, and rating must be valid non-negative numbers." };
   }
 
-  const cuisineTags = JSON.stringify(
-    cuisineTagsRaw
-      .split(",")
-      .map((t) => t.trim())
-      .filter(Boolean),
-  );
+  const cuisineTags = cuisineTagsRaw
+    .split(",")
+    .map((t) => t.trim())
+    .filter(Boolean);
 
   const lat = Number(formData.get("lat") || -33.8688);
   const lng = Number(formData.get("lng") || 151.2093);
@@ -68,50 +71,26 @@ export async function upsertRestaurantAction(formData: FormData) {
     return { error: "Latitude and longitude must be valid coordinates." };
   }
 
-  if (id) {
-    await prisma.restaurant.update({
-      where: { id },
-      data: {
-        name,
-        description,
-        city,
-        suburb,
-        cuisineTags,
-        image,
-        deliveryFeeCents,
-        minOrderCents,
-        rating,
-        phone: phone || null,
-        isOpen,
-        isActive,
-        lat,
-        lng,
-      },
+  try {
+    await upsertRestaurant({
+      id: id || undefined,
+      name,
+      description,
+      city,
+      suburb,
+      cuisineTags,
+      image,
+      deliveryFeeCents,
+      minOrderCents,
+      rating,
+      phone: phone || null,
+      isOpen,
+      isActive,
+      lat,
+      lng,
     });
-  } else {
-    let slug = slugify(name);
-    const clash = await prisma.restaurant.findUnique({ where: { slug } });
-    if (clash) slug = `${slug}-${Date.now().toString(36)}`;
-
-    await prisma.restaurant.create({
-      data: {
-        name,
-        slug,
-        description,
-        city,
-        suburb,
-        cuisineTags,
-        image,
-        deliveryFeeCents,
-        minOrderCents,
-        rating,
-        phone: phone || null,
-        isOpen,
-        isActive,
-        lat,
-        lng,
-      },
-    });
+  } catch (err) {
+    return { error: actionError(err, "Unable to save restaurant.") };
   }
 
   revalidatePath("/admin/restaurants");
@@ -123,7 +102,12 @@ export async function toggleRestaurantActiveAction(id: string, isActive: boolean
   const admin = await requireAdmin();
   if (!admin) return { error: "Admin access required." };
 
-  await prisma.restaurant.update({ where: { id }, data: { isActive } });
+  try {
+    await toggleRestaurantActive(id, isActive);
+  } catch (err) {
+    return { error: actionError(err, "Unable to update restaurant.") };
+  }
+
   revalidatePath("/admin/restaurants");
   revalidatePath("/restaurants");
   return { ok: true as const };
@@ -140,12 +124,15 @@ export async function upsertCategoryAction(formData: FormData) {
 
   if (!restaurantId || !name) return { error: "Category name is required." };
 
-  if (id) {
-    await prisma.category.update({ where: { id }, data: { name, sortOrder } });
-  } else {
-    await prisma.category.create({
-      data: { restaurantId, name, sortOrder },
+  try {
+    await upsertCategory({
+      id: id || undefined,
+      restaurantId,
+      name,
+      sortOrder,
     });
+  } catch (err) {
+    return { error: actionError(err, "Unable to save category.") };
   }
 
   revalidatePath(`/admin/restaurants/${restaurantId}/menu`);
@@ -166,57 +153,34 @@ export async function upsertMenuItemAction(formData: FormData) {
   const image = String(formData.get("image") || "") || null;
   const isAvailable =
     formData.get("isAvailable") === "on" || formData.get("isAvailable") === "true";
-  const dietaryTags = JSON.stringify(
-    ["vegan", "vegetarian", "gluten-free", "halal", "nut-free"].filter(
-      (tag) => formData.get(`diet-${tag}`) === "on",
-    ),
+  const dietaryTags = ["vegan", "vegetarian", "gluten-free", "halal", "nut-free"].filter(
+    (tag) => formData.get(`diet-${tag}`) === "on",
   );
-  const allergens = JSON.stringify(
-    ["peanuts", "tree-nuts"].filter((tag) => formData.get(`allergen-${tag}`) === "on"),
+  const allergens = ["peanuts", "tree-nuts"].filter(
+    (tag) => formData.get(`allergen-${tag}`) === "on",
   );
 
   if (!categoryId || !name || !Number.isFinite(priceCents) || priceCents < 0) {
     return { error: "Name, category, and a non-negative price are required." };
   }
 
-  if (id) {
-    await prisma.menuItem.update({
-      where: { id },
-      data: {
-        name,
-        description,
-        priceCents,
-        image,
-        isAvailable,
-        categoryId,
-        dietaryTags,
-        allergens,
-      },
+  try {
+    // Backend syncs venue-level dietaryTags from the menu after upsert.
+    await upsertMenuItem({
+      id: id || undefined,
+      restaurantId,
+      categoryId,
+      name,
+      description,
+      priceCents,
+      image,
+      isAvailable,
+      dietaryTags,
+      allergens,
     });
-  } else {
-    await prisma.menuItem.create({
-      data: {
-        categoryId,
-        name,
-        description,
-        priceCents,
-        image,
-        isAvailable,
-        dietaryTags,
-        allergens,
-      },
-    });
+  } catch (err) {
+    return { error: actionError(err, "Unable to save menu item.") };
   }
-
-  // Keep venue-level dietary tags in sync with the menu.
-  const menuItems = await prisma.menuItem.findMany({
-    where: { category: { restaurantId } },
-    select: { dietaryTags: true },
-  });
-  await prisma.restaurant.update({
-    where: { id: restaurantId },
-    data: { dietaryTags: serializeTags(unionDietaryTags(menuItems)) },
-  });
 
   revalidatePath(`/admin/restaurants/${restaurantId}/menu`);
   revalidatePath("/restaurants");
@@ -231,7 +195,12 @@ export async function toggleMenuItemAvailabilityAction(
   const admin = await requireAdmin();
   if (!admin) return { error: "Admin access required." };
 
-  await prisma.menuItem.update({ where: { id: itemId }, data: { isAvailable } });
+  try {
+    await toggleMenuItemAvailability(itemId, isAvailable);
+  } catch (err) {
+    return { error: actionError(err, "Unable to update menu item.") };
+  }
+
   revalidatePath(`/admin/restaurants/${restaurantId}/menu`);
   revalidatePath("/restaurants");
   return { ok: true as const };

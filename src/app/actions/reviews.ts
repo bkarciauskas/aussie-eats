@@ -1,13 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { prisma } from "@/lib/db";
-import { OrderStatus } from "@/lib/roles";
-import {
-  blendRestaurantRating,
-  normalizeReviewComment,
-  parseReviewRating,
-} from "@/lib/reviews";
+import { ApiError, submitReview } from "@/lib/backend";
+import { normalizeReviewComment, parseReviewRating } from "@/lib/reviews";
 import { requireUser } from "@/lib/session";
 
 export type SubmitReviewInput = {
@@ -33,50 +28,19 @@ export async function submitReviewAction(input: SubmitReviewInput) {
     return { error: "Order not found." };
   }
 
-  const order = await prisma.order.findFirst({
-    where: { id: orderId, userId: session.userId },
-    include: { restaurant: true, review: true },
-  });
-
-  if (!order) {
-    return { error: "Order not found." };
+  try {
+    const review = await submitReview({ orderId, rating, comment });
+    revalidatePath(`/orders/${review.orderId}`);
+    revalidatePath("/orders");
+    revalidatePath("/restaurants", "layout");
+    return { ok: true as const };
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 401) {
+      return { error: "Please log in to leave a review.", needsAuth: true as const };
+    }
+    if (err instanceof ApiError) {
+      return { error: err.detail || "Unable to submit review." };
+    }
+    return { error: "Unable to submit review." };
   }
-  if (order.status !== OrderStatus.delivered) {
-    return { error: "You can only review delivered orders." };
-  }
-  if (order.review) {
-    return { error: "You have already reviewed this order." };
-  }
-
-  const { rating: nextRating, userRatingCount } = blendRestaurantRating(
-    order.restaurant.rating,
-    order.restaurant.userRatingCount,
-    rating,
-  );
-
-  await prisma.$transaction([
-    prisma.review.create({
-      data: {
-        orderId: order.id,
-        userId: session.userId,
-        restaurantId: order.restaurantId,
-        rating,
-        comment,
-      },
-    }),
-    prisma.restaurant.update({
-      where: { id: order.restaurantId },
-      data: {
-        rating: nextRating,
-        userRatingCount,
-      },
-    }),
-  ]);
-
-  revalidatePath(`/orders/${order.id}`);
-  revalidatePath(`/restaurants/${order.restaurant.slug}`);
-  revalidatePath("/restaurants");
-  revalidatePath("/orders");
-
-  return { ok: true as const };
 }

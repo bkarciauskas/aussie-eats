@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { prisma } from "@/lib/db";
+import { listAdminRestaurants } from "@/lib/backend";
 import { ensureAdmin } from "@/lib/admin-guard";
 import { formatAUD } from "@/lib/money";
 import { parseCuisineTags } from "@/lib/restaurants";
@@ -7,8 +7,10 @@ import { ToggleRestaurantActive } from "@/components/admin-restaurant-actions";
 
 export default async function AdminRestaurantsPage() {
   await ensureAdmin();
-  const restaurants = await prisma.restaurant.findMany({
-    orderBy: [{ city: "asc" }, { name: "asc" }],
+  const restaurants = await listAdminRestaurants();
+  const sorted = [...restaurants].sort((a, b) => {
+    const cityCmp = a.city.localeCompare(b.city);
+    return cityCmp !== 0 ? cityCmp : a.name.localeCompare(b.name);
   });
 
   return (
@@ -37,7 +39,7 @@ export default async function AdminRestaurantsPage() {
             </tr>
           </thead>
           <tbody>
-            {restaurants.map((r) => (
+            {sorted.map((r) => (
               <tr key={r.id}>
                 <td>
                   <div className="font-medium">{r.name}</div>

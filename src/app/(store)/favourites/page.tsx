@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { RestaurantCard } from "@/components/restaurant-card";
-import { prisma } from "@/lib/db";
+import { listFavouriteRestaurants } from "@/lib/backend";
 import { formatHoursSummary, isOpenNow } from "@/lib/opening-hours";
 import { requireUser } from "@/lib/session";
 
@@ -11,14 +11,7 @@ export default async function FavouritesPage() {
     redirect("/login?next=/favourites");
   }
 
-  const favourites = await prisma.favourite.findMany({
-    where: {
-      userId: session.userId,
-      restaurant: { isActive: true },
-    },
-    include: { restaurant: true },
-    orderBy: { createdAt: "desc" },
-  });
+  const restaurants = await listFavouriteRestaurants();
 
   return (
     <div className="page-shell">
@@ -29,7 +22,7 @@ export default async function FavouritesPage() {
         </p>
       </div>
 
-      {favourites.length === 0 ? (
+      {restaurants.length === 0 ? (
         <div className="panel text-center">
           <h2 className="font-display text-2xl text-[var(--ae-green)]">
             No saved restaurants yet
@@ -43,7 +36,7 @@ export default async function FavouritesPage() {
         </div>
       ) : (
         <div>
-          {favourites.map(({ restaurant }) => (
+          {restaurants.map((restaurant) => (
             <RestaurantCard
               key={restaurant.id}
               id={restaurant.id}

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/db";
+import { getAdminRestaurant } from "@/lib/backend";
 import { ensureAdmin } from "@/lib/admin-guard";
 import { RestaurantForm } from "@/components/restaurant-form";
 
@@ -9,7 +9,7 @@ type Props = { params: Promise<{ id: string }> };
 export default async function EditRestaurantPage({ params }: Props) {
   await ensureAdmin();
   const { id } = await params;
-  const restaurant = await prisma.restaurant.findUnique({ where: { id } });
+  const restaurant = await getAdminRestaurant(id);
   if (!restaurant) notFound();
 
   return (

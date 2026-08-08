@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { listFavouriteRestaurantIds } from "@/app/actions/favourites";
-import { prisma } from "@/lib/db";
+import { getRestaurantBySlug, listRestaurants } from "@/lib/backend";
 import { RestaurantFilters } from "@/components/restaurant-filters";
 import { RestaurantsExplorer, type ExplorerRestaurant } from "@/components/restaurants-explorer";
 import { distanceKm, parseCuisineTags, parseOrigin } from "@/lib/restaurants";
@@ -38,19 +38,19 @@ type Props = {
 /** Venue ids with at least one item matching every diet; null when unfiltered. */
 async function venueIdsMatchingDiets(
   diets: readonly DietId[],
+  restaurants: { id: string; slug: string }[],
 ): Promise<Set<string> | null> {
   if (diets.length === 0) return null;
 
-  const venues = await prisma.restaurant.findMany({
-    where: { isActive: true },
-    select: {
-      id: true,
-      categories: { select: { items: { select: { dietaryTags: true } } } },
-    },
-  });
+  const details = await Promise.all(
+    restaurants.map((restaurant) =>
+      getRestaurantBySlug(restaurant.slug).catch(() => null),
+    ),
+  );
 
   return new Set(
-    venues
+    details
+      .filter((detail): detail is NonNullable<typeof detail> => Boolean(detail))
       .filter((venue) =>
         restaurantMatchesDiets(
           { menuItems: venue.categories.flatMap((category) => category.items) },
@@ -81,13 +81,10 @@ export default async function RestaurantsPage({ searchParams }: Props) {
   const cityPin = findDemoCity(cityFilter);
   const etaOrigin = origin ?? (cityPin ? { lat: cityPin.lat, lng: cityPin.lng } : null);
 
-  const [restaurants, favouriteIds, dietMatchedIds] = await Promise.all([
-    prisma.restaurant.findMany({
-      where: { isActive: true },
-      orderBy: [{ city: "asc" }, { rating: "desc" }, { name: "asc" }],
-    }),
+  const restaurants = await listRestaurants({ activeOnly: true });
+  const [favouriteIds, dietMatchedIds] = await Promise.all([
     listFavouriteRestaurantIds(),
-    venueIdsMatchingDiets(activeDiets),
+    venueIdsMatchingDiets(activeDiets, restaurants),
   ]);
 
   const allCuisines = Array.from(

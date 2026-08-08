@@ -1,27 +1,17 @@
 import Link from "next/link";
-import { prisma } from "@/lib/db";
+import { getAdminDashboard } from "@/lib/backend";
 import { ensureAdmin } from "@/lib/admin-guard";
 
 export default async function AdminDashboardPage() {
   await ensureAdmin();
 
-  const [restaurantCount, openOrders, customerCount, recentOrders] = await Promise.all([
-    prisma.restaurant.count({ where: { isActive: true } }),
-    prisma.order.count({
-      where: { status: { in: ["pending", "preparing", "out_for_delivery"] } },
-    }),
-    prisma.user.count({ where: { role: "CUSTOMER" } }),
-    prisma.order.findMany({
-      take: 5,
-      orderBy: { createdAt: "desc" },
-      include: { restaurant: true, user: true },
-    }),
-  ]);
+  const { restaurantCount, openOrders, customerCount, recentOrders } =
+    await getAdminDashboard();
 
   return (
     <div>
       <h1 className="font-display text-3xl text-[var(--ae-green)]">Dashboard</h1>
-      <p className="mt-1 text-sm text-[var(--ae-ink-muted)]">Local SQLite demo</p>
+      <p className="mt-1 text-sm text-[var(--ae-ink-muted)]">AussieEats admin</p>
 
       <div className="mt-8 grid gap-4 sm:grid-cols-3">
         <div className="panel">
@@ -63,8 +53,8 @@ export default async function AdminDashboardPage() {
                     timeStyle: "short",
                   }).format(order.createdAt)}
                 </td>
-                <td>{order.user.email}</td>
-                <td>{order.restaurant.name}</td>
+                <td>{order.user?.email ?? "—"}</td>
+                <td>{order.restaurant?.name ?? "—"}</td>
                 <td>
                   <span className="status-pill" data-status={order.status}>
                     {order.status}

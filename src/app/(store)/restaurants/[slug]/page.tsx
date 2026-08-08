@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { listFavouriteRestaurantIds } from "@/app/actions/favourites";
-import { prisma } from "@/lib/db";
+import { getRestaurantBySlug } from "@/lib/backend";
 import { formatAUD } from "@/lib/money";
 import { parseCuisineTags } from "@/lib/restaurants";
 import { AddToCartButton } from "@/components/add-to-cart-button";
@@ -26,24 +26,7 @@ export default async function RestaurantDetailPage({ params, searchParams }: Pro
   const { diet = "", allergy = "" } = await searchParams;
   const activeDiets = parseDietQuery({ diet, allergy });
   const [restaurant, favouriteIds] = await Promise.all([
-    prisma.restaurant.findFirst({
-      where: { slug, isActive: true },
-      include: {
-        categories: {
-          orderBy: { sortOrder: "asc" },
-          include: {
-            items: { orderBy: { name: "asc" } },
-          },
-        },
-        reviews: {
-          orderBy: { createdAt: "desc" },
-          take: 8,
-          include: {
-            user: { select: { name: true } },
-          },
-        },
-      },
-    }),
+    getRestaurantBySlug(slug),
     listFavouriteRestaurantIds(),
   ]);
 
@@ -166,7 +149,7 @@ export default async function RestaurantDetailPage({ params, searchParams }: Pro
                       menuItemId={item.id}
                       name={item.name}
                       unitPriceCents={item.priceCents}
-                      image={item.image}
+                      image={item.image ?? null}
                       restaurantId={restaurant.id}
                       restaurantSlug={restaurant.slug}
                       restaurantName={restaurant.name}
@@ -209,7 +192,7 @@ export default async function RestaurantDetailPage({ params, searchParams }: Pro
                 <li key={review.id} className="py-4">
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
                     <p className="font-medium">
-                      {review.user.name}{" "}
+                      {review.userName ?? "Customer"}{" "}
                       <span className="text-[var(--ae-green)]">{review.rating} ★</span>
                     </p>
                     <p className="text-xs text-[var(--ae-ink-soft)]">
