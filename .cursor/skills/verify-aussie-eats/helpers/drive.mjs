@@ -247,9 +247,127 @@ async function run() {
       passed = /\/admin\/?$/.test(new URL(url).pathname) && navOrders > 0;
       if (!passed) error = `admin dashboard assertions failed url=${url}`;
     } else if (feature === "place-order") {
-      throw new Error(
-        "place-order is mapped but multi-step; drive manually per features/place-order.md or extend drive.mjs",
-      );
+      await page.goto(baseUrl + "/login?next=/restaurants/harbour-burger-co", {
+        waitUntil: "networkidle",
+      });
+      await page.locator('input[name="email"]').fill("demo@aussieeats.local");
+      await page.locator('input[name="password"]').fill("demo1234");
+      await Promise.all([
+        page.waitForURL(/\/restaurants\/harbour-burger-co/),
+        page.getByRole("button", { name: /sign in/i }).click(),
+      ]);
+      await page.waitForLoadState("networkidle");
+
+      const addButtons = page.getByRole("button", { name: "Add", exact: true });
+      await addButtons.first().waitFor({ state: "visible", timeout: 15000 });
+      await addButtons.first().click();
+      await page.getByText(/Added ·/i).first().waitFor({ timeout: 5000 });
+      await page.screenshot({ path: join(evidenceDir, "01-action-add-to-cart.png"), fullPage: true });
+      steps.push({ action: "added menu item at Harbour Burger Co" });
+
+      await page.goto(baseUrl + "/cart", { waitUntil: "networkidle" });
+      await page.getByRole("link", { name: /^Checkout$/i }).click();
+      await page.waitForURL(/\/checkout/);
+      await page.waitForLoadState("networkidle");
+
+      await page.locator('input[value="card"]').check();
+      await page.getByPlaceholder("4242 4242 4242 4242").fill("4242 4242 4242 4242");
+      await page.getByPlaceholder("Taylor Smith").fill("Demo User");
+      await page.locator('input[autocomplete="cc-exp"]').fill("12/30");
+      await page.locator('input[autocomplete="cc-csc"]').fill("123");
+      await page.screenshot({ path: join(evidenceDir, "02-action-checkout.png"), fullPage: true });
+      steps.push({ action: "filled checkout with demo card" });
+
+      await Promise.all([
+        page.waitForURL(/\/orders\/[^/]+/),
+        page.getByRole("button", { name: /Pay & place order/i }).click(),
+      ]);
+      await page.waitForLoadState("networkidle");
+      const orderUrl = page.url();
+      const orderBody = await page.content();
+      const hasPending = /pending/i.test(orderBody);
+      const hasCard = /Visa ending 4242|Card · Visa/i.test(orderBody);
+      await page.screenshot({ path: join(evidenceDir, "03-result-order.png"), fullPage: true });
+      steps.push({ result: "order placed", orderUrl, hasPending, hasCard });
+      passed = /\/orders\//.test(orderUrl) && hasPending && hasCard;
+      if (!passed) {
+        error = `place-order assertions failed url=${orderUrl} hasPending=${hasPending} hasCard=${hasCard}`;
+      }
+    } else if (feature === "admin-order-status") {
+      await page.goto(baseUrl + "/admin/login", { waitUntil: "networkidle" });
+      await page.locator('input[name="email"]').fill("admin@aussieeats.local");
+      await page.locator('input[name="password"]').fill("admin1234");
+      await Promise.all([
+        page.waitForURL(/\/admin\/?$/),
+        page.getByRole("button", { name: /sign in/i }).click(),
+      ]);
+      await page.goto(baseUrl + "/admin/orders", { waitUntil: "networkidle" });
+      await page.getByRole("heading", { name: "Orders" }).waitFor();
+
+      const pendingRow = page.locator("tr", { has: page.locator('[data-status="pending"]') }).first();
+      await pendingRow.waitFor({ state: "visible", timeout: 15000 });
+      await page.screenshot({
+        path: join(evidenceDir, "01-action-orders-pending.png"),
+        fullPage: true,
+      });
+      steps.push({ action: "opened admin orders with pending row" });
+
+      await pendingRow.getByRole("button", { name: /→ Preparing/i }).click();
+      await pendingRow.locator('[data-status="preparing"]').waitFor({ timeout: 15000 });
+      await page.screenshot({
+        path: join(evidenceDir, "02-result-status-preparing.png"),
+        fullPage: true,
+      });
+      const preparingCount = await page.locator('[data-status="preparing"]').count();
+      steps.push({ result: "advanced pending → preparing", preparingCount });
+      passed = preparingCount > 0;
+      if (!passed) error = "order status did not advance to preparing";
+    } else if (feature === "admin-menu-edit") {
+      await page.goto(baseUrl + "/admin/login", { waitUntil: "networkidle" });
+      await page.locator('input[name="email"]').fill("admin@aussieeats.local");
+      await page.locator('input[name="password"]').fill("admin1234");
+      await Promise.all([
+        page.waitForURL(/\/admin\/?$/),
+        page.getByRole("button", { name: /sign in/i }).click(),
+      ]);
+      await page.goto(baseUrl + "/admin/restaurants", { waitUntil: "networkidle" });
+      const harbourRow = page.locator("tr", { hasText: "Harbour Burger Co" }).first();
+      await harbourRow.waitFor({ state: "visible", timeout: 15000 });
+      await harbourRow.getByRole("link", { name: "Menu" }).click();
+      await page.waitForURL(/\/admin\/restaurants\/[^/]+\/menu/);
+      await page.getByRole("heading", { name: /Menu · Harbour Burger Co/i }).waitFor();
+
+      const firstItem = page.locator("section.panel ul li").first();
+      const beforeText = (await firstItem.locator("p.font-medium").first().textContent()) || "";
+      const beforeMatch = beforeText.match(/\$(\d+\.\d{2})/);
+      const beforePrice = beforeMatch ? beforeMatch[1] : null;
+      await firstItem.getByRole("button", { name: "Edit" }).click();
+      const dialog = page.getByRole("dialog", { name: "Edit menu item" });
+      await dialog.waitFor({ state: "visible" });
+      const priceInput = dialog.locator('input[name="price"]');
+      const current = Number(await priceInput.inputValue());
+      const nextPrice = (current + 0.5).toFixed(2);
+      await priceInput.fill(nextPrice);
+      await page.screenshot({
+        path: join(evidenceDir, "01-action-edit-price.png"),
+        fullPage: true,
+      });
+      steps.push({ action: "edited menu item price", beforePrice, nextPrice });
+      await dialog.getByRole("button", { name: "Save" }).click();
+      await dialog.waitFor({ state: "hidden", timeout: 15000 });
+      await page.waitForLoadState("networkidle");
+      await page.reload({ waitUntil: "networkidle" });
+      const afterText = (await page.locator("section.panel ul li").first().locator("p.font-medium").first().textContent()) || "";
+      const hasNewPrice = afterText.includes(`$${nextPrice}`);
+      await page.screenshot({
+        path: join(evidenceDir, "02-result-price-updated.png"),
+        fullPage: true,
+      });
+      steps.push({ result: "menu price persisted", afterText, hasNewPrice });
+      passed = hasNewPrice;
+      if (!passed) {
+        error = `menu price not updated; before=${beforePrice} expected=$${nextPrice} after=${afterText}`;
+      }
     } else {
       throw new Error(`unknown feature: ${feature}`);
     }

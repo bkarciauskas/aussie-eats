@@ -120,4 +120,14 @@ Deeper developer docs (browse/location, cart money, Places runbook, Cloud Agents
 | `npm run db:seed` | Upsert demo users; seed orders/reviews if missing; bootstrap catalog if empty |
 | `npm run db:import-places` | One-shot Google Places → Mongo ingest |
 | `npm test` | Unit tests (`src/**/*.test.ts` via tsx) |
+| `npm run test:backend` | FastAPI pytest suite (`backend/tests`) |
 | `npm run lint` | ESLint |
+
+### Backend pytest (APJ-20)
+
+```bash
+cd backend && python3 -m pytest
+# or: npm run test:backend
+```
+
+Covers auth, checkout price recompute, min-order rejection, order status transitions, favourites, and reviews against an in-memory fake Mongo.

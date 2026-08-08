@@ -28,8 +28,9 @@ Manual equivalent:
 ## Proof
 
 - Cart cleared after place
-- `/orders` lists the new order
-- Order detail shows status pending / `Card · Visa ending 4242` / `Paid (demo)`
-- **Side effect:** row exists in SQLite `Order` (or visible in admin Orders)
+- Lands on `/orders/:id` with status pending
+- Order detail shows `Card · Visa ending 4242` / `Paid (demo)`
+- **Side effect:** order visible under admin **Orders** (Mongo via FastAPI)
 
-Mutates shared demo DB — prefer an isolated `DATABASE_URL` when parallelism matters.
+Mutates shared demo DB — fine for local smoke; avoid parallel writers on the same Mongo DB.
+
