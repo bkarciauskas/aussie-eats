@@ -73,4 +73,15 @@ describe("buildRestaurantSearchParams", () => {
     assert.equal(params.get("city"), null);
     assert.equal(params.get("q"), "Bondi Slice House");
   });
+
+  it("preserves diet and allergy filters", () => {
+    const params = buildRestaurantSearchParams({
+      rawQ: "",
+      locationCity: "Sydney",
+      diet: "vegan",
+      allergy: "nuts",
+    });
+    assert.equal(params.get("diet"), "vegan,nut-free");
+    assert.equal(params.get("allergy"), "nuts");
+  });
 });

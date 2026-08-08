@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { FavouriteButton } from "@/components/favourite-button";
 import { formatAUD } from "@/lib/money";
+import { dietLabels, parseDietaryTags } from "@/lib/dietary";
 import { parseCuisineTags } from "@/lib/restaurants";
 
 type Props = {
@@ -10,6 +11,7 @@ type Props = {
   description: string;
   image: string;
   cuisineTags: string;
+  dietaryTags?: string;
   city?: string;
   suburb: string;
   rating: number;
@@ -20,6 +22,7 @@ type Props = {
   etaLabel?: string | null;
   hoursSummary?: string | null;
   isFavourite?: boolean;
+  hrefQuery?: string;
 };
 
 export function RestaurantCard({
@@ -29,6 +32,7 @@ export function RestaurantCard({
   description,
   image,
   cuisineTags,
+  dietaryTags = "[]",
   city,
   suburb,
   rating,
@@ -39,8 +43,13 @@ export function RestaurantCard({
   etaLabel,
   hoursSummary,
   isFavourite = false,
+  hrefQuery = "",
 }: Props) {
   const tags = parseCuisineTags(cuisineTags);
+  const diets = dietLabels(parseDietaryTags(dietaryTags)).slice(0, 3);
+  const href = hrefQuery
+    ? `/restaurants/${slug}?${hrefQuery}`
+    : `/restaurants/${slug}`;
   const ratingLabel =
     userRatingCount > 0
       ? `${rating.toFixed(1)} ★ (${userRatingCount.toLocaleString("en-AU")})`
@@ -48,7 +57,7 @@ export function RestaurantCard({
 
   return (
     <article className="relative">
-      <Link href={`/restaurants/${slug}`} className="restaurant-row group pr-12">
+      <Link href={href} className="restaurant-row group pr-12">
         <div
           className="restaurant-thumb"
           style={{ backgroundImage: `url(${image})` }}
@@ -78,6 +87,11 @@ export function RestaurantCard({
           <div className="mt-2 flex flex-wrap gap-1.5">
             {tags.slice(0, 3).map((tag) => (
               <span key={tag} className="tag">
+                {tag}
+              </span>
+            ))}
+            {diets.map((tag) => (
+              <span key={tag} className="tag tag-diet">
                 {tag}
               </span>
             ))}

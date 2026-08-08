@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { serializeTags, unionDietaryTags } from "@/lib/dietary";
 import { requireAdmin } from "@/lib/session";
 
 function slugify(name: string) {
@@ -165,6 +166,14 @@ export async function upsertMenuItemAction(formData: FormData) {
   const image = String(formData.get("image") || "") || null;
   const isAvailable =
     formData.get("isAvailable") === "on" || formData.get("isAvailable") === "true";
+  const dietaryTags = JSON.stringify(
+    ["vegan", "vegetarian", "gluten-free", "halal", "nut-free"].filter(
+      (tag) => formData.get(`diet-${tag}`) === "on",
+    ),
+  );
+  const allergens = JSON.stringify(
+    ["peanuts", "tree-nuts"].filter((tag) => formData.get(`allergen-${tag}`) === "on"),
+  );
 
   if (!categoryId || !name || !Number.isFinite(priceCents) || priceCents < 0) {
     return { error: "Name, category, and a non-negative price are required." };
@@ -173,13 +182,41 @@ export async function upsertMenuItemAction(formData: FormData) {
   if (id) {
     await prisma.menuItem.update({
       where: { id },
-      data: { name, description, priceCents, image, isAvailable, categoryId },
+      data: {
+        name,
+        description,
+        priceCents,
+        image,
+        isAvailable,
+        categoryId,
+        dietaryTags,
+        allergens,
+      },
     });
   } else {
     await prisma.menuItem.create({
-      data: { categoryId, name, description, priceCents, image, isAvailable },
+      data: {
+        categoryId,
+        name,
+        description,
+        priceCents,
+        image,
+        isAvailable,
+        dietaryTags,
+        allergens,
+      },
     });
   }
+
+  // Keep venue-level dietary tags in sync with the menu.
+  const menuItems = await prisma.menuItem.findMany({
+    where: { category: { restaurantId } },
+    select: { dietaryTags: true },
+  });
+  await prisma.restaurant.update({
+    where: { id: restaurantId },
+    data: { dietaryTags: serializeTags(unionDietaryTags(menuItems)) },
+  });
 
   revalidatePath(`/admin/restaurants/${restaurantId}/menu`);
   revalidatePath("/restaurants");

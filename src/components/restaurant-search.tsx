@@ -134,6 +134,8 @@ function RestaurantSearchForm({
       locationLng: location?.lng,
       locationPlace: location?.label,
       cuisine: searchParams.get("cuisine"),
+      diet: searchParams.get("diet"),
+      allergy: searchParams.get("allergy"),
     });
     const qs = params.toString();
     navigate(qs ? `/restaurants?${qs}` : "/restaurants");

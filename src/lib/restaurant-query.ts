@@ -1,4 +1,5 @@
 import { findDemoCity, resolveRestaurantQuery } from "@/lib/cities";
+import { applyDietSearchParams, parseDietQuery } from "@/lib/dietary";
 import { parseCuisineTags } from "@/lib/restaurants";
 
 export type SearchableRestaurant = {
@@ -41,6 +42,8 @@ export type BuildRestaurantSearchParamsInput = {
   locationLng?: number | null;
   locationPlace?: string | null;
   cuisine?: string | null;
+  diet?: string | null;
+  allergy?: string | null;
 };
 
 /**
@@ -53,6 +56,10 @@ export function buildRestaurantSearchParams(
 ): URLSearchParams {
   const params = new URLSearchParams();
   if (input.cuisine) params.set("cuisine", input.cuisine);
+  applyDietSearchParams(
+    params,
+    parseDietQuery({ diet: input.diet, allergy: input.allergy }),
+  );
 
   const resolved = resolveRestaurantQuery({
     q: input.rawQ,

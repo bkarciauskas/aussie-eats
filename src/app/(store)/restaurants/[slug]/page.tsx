@@ -4,15 +4,27 @@ import { prisma } from "@/lib/db";
 import { formatAUD } from "@/lib/money";
 import { parseCuisineTags } from "@/lib/restaurants";
 import { AddToCartButton } from "@/components/add-to-cart-button";
+import { MenuItemBadges } from "@/components/menu-item-badges";
 import { RestaurantLocationMap } from "@/components/restaurant-location-map";
 import { DeliveryEta } from "@/components/delivery-eta";
 import { FavouriteButton } from "@/components/favourite-button";
 import { formatHoursSummary, isOpenNow } from "@/lib/opening-hours";
+import {
+  dietLabels,
+  itemMatchesDiets,
+  parseDietQuery,
+  parseDietaryTags,
+} from "@/lib/dietary";
 
-type Props = { params: Promise<{ slug: string }> };
+type Props = {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ diet?: string; allergy?: string }>;
+};
 
-export default async function RestaurantDetailPage({ params }: Props) {
+export default async function RestaurantDetailPage({ params, searchParams }: Props) {
   const { slug } = await params;
+  const { diet = "", allergy = "" } = await searchParams;
+  const activeDiets = parseDietQuery({ diet, allergy });
   const [restaurant, favouriteIds] = await Promise.all([
     prisma.restaurant.findFirst({
       where: { slug, isActive: true },
@@ -38,6 +50,7 @@ export default async function RestaurantDetailPage({ params }: Props) {
   if (!restaurant) notFound();
 
   const tags = parseCuisineTags(restaurant.cuisineTags);
+  const venueDiets = parseDietaryTags(restaurant.dietaryTags);
   const openNow = isOpenNow({
     openingHoursJson: restaurant.openingHoursJson,
     isOpen: restaurant.isOpen,
@@ -48,6 +61,9 @@ export default async function RestaurantDetailPage({ params }: Props) {
     restaurant.userRatingCount > 0
       ? `${restaurant.rating.toFixed(1)} ★ (${restaurant.userRatingCount.toLocaleString("en-AU")} reviews)`
       : `${restaurant.rating.toFixed(1)} ★`;
+
+  const dietFilterActive = activeDiets.length > 0;
+  const nutFreeActive = activeDiets.includes("nut-free");
 
   return (
     <div>
@@ -93,49 +109,93 @@ export default async function RestaurantDetailPage({ params }: Props) {
                 {tag}
               </span>
             ))}
+            {dietLabels(venueDiets).map((tag) => (
+              <span key={tag} className="rounded bg-emerald-400/20 px-2 py-0.5 text-xs text-emerald-100">
+                {tag}
+              </span>
+            ))}
           </div>
           <p className="mt-4 max-w-xl text-xs text-white/55">
-            Venue details sourced from Google Places where available; menus are demo-generated.
+            Venue details sourced from Google Places where available; menus and dietary tags are
+            demo-generated — not medical-grade allergen advice.
           </p>
         </div>
       </section>
 
       <div className="page-shell space-y-10">
-        {restaurant.categories.map((category) => (
-          <section key={category.id}>
-            <h2 className="font-display text-2xl text-[var(--ae-green)]">{category.name}</h2>
-            <ul className="mt-4 divide-y divide-[var(--ae-line)]">
-              {category.items.map((item) => (
-                <li key={item.id} className="flex items-start justify-between gap-4 py-4">
-                  <div className="min-w-0">
-                    <p className="font-medium">
-                      {item.name}
-                      {!item.isAvailable ? (
-                        <span className="ml-2 text-xs text-[var(--ae-danger)]">Unavailable</span>
-                      ) : null}
-                    </p>
-                    <p className="mt-1 text-sm text-[var(--ae-ink-muted)]">{item.description}</p>
-                    <p className="mt-2 text-sm font-semibold">{formatAUD(item.priceCents)}</p>
-                  </div>
-                  <AddToCartButton
-                    menuItemId={item.id}
-                    name={item.name}
-                    unitPriceCents={item.priceCents}
-                    image={item.image}
-                    restaurantId={restaurant.id}
-                    restaurantSlug={restaurant.slug}
-                    restaurantName={restaurant.name}
-                    restaurantLat={restaurant.lat}
-                    restaurantLng={restaurant.lng}
-                    deliveryFeeCents={restaurant.deliveryFeeCents}
-                    minOrderCents={restaurant.minOrderCents}
-                    disabled={!item.isAvailable || !openNow}
-                  />
-                </li>
-              ))}
-            </ul>
-          </section>
-        ))}
+        {dietFilterActive ? (
+          <div className="panel border-[var(--ae-accent-soft)] bg-[var(--ae-accent-soft)]/30">
+            <p className="text-sm text-[var(--ae-ink-muted)]">
+              Showing items tagged{" "}
+              <span className="font-medium text-[var(--ae-ink)]">
+                {dietLabels(activeDiets).join(", ")}
+              </span>
+              . Untagged items are hidden
+              {nutFreeActive ? " (treated as may contain nuts)" : ""}.
+            </p>
+          </div>
+        ) : null}
+
+        {restaurant.categories.map((category) => {
+          const items = dietFilterActive
+            ? category.items.filter((item) => itemMatchesDiets(item, activeDiets))
+            : category.items;
+          if (items.length === 0) return null;
+          return (
+            <section key={category.id}>
+              <h2 className="font-display text-2xl text-[var(--ae-green)]">{category.name}</h2>
+              <ul className="mt-4 divide-y divide-[var(--ae-line)]">
+                {items.map((item) => (
+                  <li key={item.id} className="flex items-start justify-between gap-4 py-4">
+                    <div className="min-w-0">
+                      <p className="font-medium">
+                        {item.name}
+                        {!item.isAvailable ? (
+                          <span className="ml-2 text-xs text-[var(--ae-danger)]">Unavailable</span>
+                        ) : null}
+                      </p>
+                      <p className="mt-1 text-sm text-[var(--ae-ink-muted)]">{item.description}</p>
+                      <MenuItemBadges
+                        dietaryTags={item.dietaryTags}
+                        allergens={item.allergens}
+                        activeDiets={activeDiets}
+                      />
+                      <p className="mt-2 text-sm font-semibold">{formatAUD(item.priceCents)}</p>
+                    </div>
+                    <AddToCartButton
+                      menuItemId={item.id}
+                      name={item.name}
+                      unitPriceCents={item.priceCents}
+                      image={item.image}
+                      restaurantId={restaurant.id}
+                      restaurantSlug={restaurant.slug}
+                      restaurantName={restaurant.name}
+                      restaurantLat={restaurant.lat}
+                      restaurantLng={restaurant.lng}
+                      deliveryFeeCents={restaurant.deliveryFeeCents}
+                      minOrderCents={restaurant.minOrderCents}
+                      disabled={!item.isAvailable || !openNow}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </section>
+          );
+        })}
+
+        {dietFilterActive &&
+        restaurant.categories.every(
+          (category) =>
+            category.items.filter((item) => itemMatchesDiets(item, activeDiets)).length === 0,
+        ) ? (
+          <div className="panel">
+            <h2 className="font-display text-2xl">No matching menu items</h2>
+            <p className="mt-2 text-[var(--ae-ink-muted)]">
+              Nothing here is explicitly tagged for {dietLabels(activeDiets).join(", ")}. Clear
+              the filter on the restaurants page to see the full menu.
+            </p>
+          </div>
+        ) : null}
 
         <section>
           <h2 className="font-display text-2xl text-[var(--ae-green)]">Customer reviews</h2>

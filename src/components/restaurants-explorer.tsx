@@ -14,6 +14,7 @@ export type ExplorerRestaurant = {
   description: string;
   image: string;
   cuisineTags: string;
+  dietaryTags?: string;
   city: string;
   suburb: string;
   rating: number;
@@ -25,6 +26,8 @@ export type ExplorerRestaurant = {
   lng: number;
   distanceKm: number | null;
   etaLabel?: string | null;
+  /** Query string to append on restaurant links (e.g. diet filters). */
+  hrefQuery?: string;
 };
 
 export function RestaurantsExplorer({
@@ -67,7 +70,8 @@ export function RestaurantsExplorer({
           <div className="panel mt-6">
             <h2 className="font-display text-2xl">No restaurants match</h2>
             <p className="mt-2 text-[var(--ae-ink-muted)]">
-              Try another city filter, clear search, or widen your location.
+              Try another city filter, clear dietary filters, clear search, or widen your
+              location.
             </p>
           </div>
         ) : (
@@ -90,6 +94,7 @@ export function RestaurantsExplorer({
                   description={r.description}
                   image={r.image}
                   cuisineTags={r.cuisineTags}
+                  dietaryTags={r.dietaryTags}
                   city={r.city}
                   suburb={r.suburb}
                   rating={r.rating}
@@ -100,6 +105,7 @@ export function RestaurantsExplorer({
                   etaLabel={r.etaLabel}
                   hoursSummary={r.hoursSummary}
                   isFavourite={favouriteIdSet.has(r.id)}
+                  hrefQuery={r.hrefQuery}
                 />
               </div>
             ))}

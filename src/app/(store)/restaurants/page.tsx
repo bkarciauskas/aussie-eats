@@ -13,6 +13,12 @@ import {
 import { restaurantMatchesQuery } from "@/lib/restaurant-query";
 import { estimateDeliveryEta } from "@/lib/eta";
 import { formatHoursSummary, isOpenNow } from "@/lib/opening-hours";
+import {
+  applyDietSearchParams,
+  dietLabels,
+  parseDietQuery,
+  restaurantMatchesDiets,
+} from "@/lib/dietary";
 
 type Props = {
   searchParams: Promise<{
@@ -23,6 +29,8 @@ type Props = {
     lng?: string;
     place?: string;
     open?: string;
+    diet?: string;
+    allergy?: string;
   }>;
 };
 
@@ -35,10 +43,13 @@ export default async function RestaurantsPage({ searchParams }: Props) {
     lng,
     place = "",
     open = "",
+    diet = "",
+    allergy = "",
   } = await searchParams;
   const { q, city: cityFilter } = resolveRestaurantQuery({ q: rawQ, city });
   const cityLabel = demoCityLabel(cityFilter);
   const openNowOnly = open === "1" || open === "true";
+  const activeDiets = parseDietQuery({ diet, allergy });
   const origin = parseOrigin(lat, lng);
   const cityPin = findDemoCity(cityFilter);
   const etaOrigin = origin ?? (cityPin ? { lat: cityPin.lat, lng: cityPin.lng } : null);
@@ -67,8 +78,13 @@ export default async function RestaurantsPage({ searchParams }: Props) {
       city: r.city,
     });
     const matchesOpen = !openNowOnly || openNow;
-    return matchesQ && matchesCuisine && matchesCity && matchesOpen;
+    const matchesDiet = restaurantMatchesDiets(r, activeDiets);
+    return matchesQ && matchesCuisine && matchesCity && matchesOpen && matchesDiet;
   });
+
+  const dietLinkParams = new URLSearchParams();
+  applyDietSearchParams(dietLinkParams, activeDiets);
+  const hrefQuery = dietLinkParams.toString();
 
   const withDistance: ExplorerRestaurant[] = filtered.map((r) => {
     const openNow = isOpenNow({
@@ -91,6 +107,7 @@ export default async function RestaurantsPage({ searchParams }: Props) {
       description: r.description,
       image: r.image,
       cuisineTags: r.cuisineTags,
+      dietaryTags: r.dietaryTags,
       city: r.city,
       suburb: r.suburb,
       rating: r.rating,
@@ -102,6 +119,7 @@ export default async function RestaurantsPage({ searchParams }: Props) {
       lng: r.lng,
       distanceKm: origin ? distanceKm(origin.lat, origin.lng, r.lat, r.lng) : null,
       etaLabel: eta,
+      hrefQuery,
     };
   });
 
@@ -112,6 +130,9 @@ export default async function RestaurantsPage({ searchParams }: Props) {
   const locationLabel = origin
     ? place || `${origin.lat.toFixed(3)}, ${origin.lng.toFixed(3)}`
     : "";
+
+  const dietSummary =
+    activeDiets.length > 0 ? ` · ${dietLabels(activeDiets).join(", ")}` : "";
 
   return (
     <div className="page-shell">
@@ -125,6 +146,7 @@ export default async function RestaurantsPage({ searchParams }: Props) {
                 ? `${cityLabel} · filter or search across suburbs`
                 : "Sydney, Melbourne, Brisbane, Perth, Adelaide, Hobart"}
             {openNowOnly ? " · open now" : ""}
+            {dietSummary}
           </p>
         </div>
       </div>
@@ -136,6 +158,7 @@ export default async function RestaurantsPage({ searchParams }: Props) {
           initialCuisine={cuisine}
           initialCity={cityFilter}
           initialOpenNow={openNowOnly}
+          initialDiets={activeDiets}
         />
       </Suspense>
 

@@ -458,7 +458,7 @@ async function upsertVenue(input: {
   const clash = await prisma.restaurant.findUnique({ where: { slug } });
   if (clash) slug = `${slug}-${input.placeId.slice(-6).toLowerCase()}`;
 
-  const categories = cloneMenuCategories(templateKey);
+  const { categories, restaurantDietaryTags } = cloneMenuCategories(templateKey);
   await prisma.restaurant.create({
     data: {
       placeId: input.placeId,
@@ -467,6 +467,7 @@ async function upsertVenue(input: {
       description,
       image,
       cuisineTags: JSON.stringify(cuisineTags),
+      dietaryTags: restaurantDietaryTags,
       city: input.city.label,
       suburb,
       lat,
@@ -490,6 +491,8 @@ async function upsertVenue(input: {
               priceCents: item.priceCents,
               image: item.image ?? null,
               isAvailable: true,
+              dietaryTags: item.dietaryTags,
+              allergens: item.allergens,
             })),
           },
         })),

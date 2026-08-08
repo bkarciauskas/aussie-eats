@@ -177,6 +177,53 @@ button:focus-visible {
   letter-spacing: 0.01em;
 }
 
+.tag-diet {
+  background: rgba(31, 77, 58, 0.1);
+  color: var(--ae-green);
+}
+
+.tag-allergen {
+  background: rgba(180, 35, 24, 0.1);
+  color: var(--ae-danger);
+}
+
+.diet-chip {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  border: 1px solid var(--ae-line);
+  border-radius: 0.45rem;
+  background: #fff;
+  color: var(--ae-ink-muted);
+  padding: 0.4rem 0.75rem;
+  font-size: 0.85rem;
+  transition: border-color 160ms ease, background 160ms ease, color 160ms ease;
+}
+
+.diet-chip:hover {
+  border-color: var(--ae-green);
+  color: var(--ae-ink);
+}
+
+.diet-chip-active {
+  border-color: var(--ae-green);
+  background: rgba(31, 77, 58, 0.08);
+  color: var(--ae-green);
+  font-weight: 600;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .restaurant-row {
   display: flex;
   gap: 1rem;

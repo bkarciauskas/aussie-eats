@@ -41,6 +41,8 @@ model Restaurant {
   description      String
   image            String
   cuisineTags      String
+  /// JSON string array of diet tags present on the menu (demo approximation)
+  dietaryTags      String     @default("[]")
   city             String     @default("Sydney")
   suburb           String
   lat              Float
@@ -94,6 +96,10 @@ model MenuItem {
   priceCents  Int
   image       String?
   isAvailable Boolean     @default(true)
+  /// JSON string array: vegan | vegetarian | gluten-free | halal | nut-free
+  dietaryTags String      @default("[]")
+  /// JSON string array of known allergens (e.g. peanuts, tree-nuts); empty ≠ safe
+  allergens   String      @default("[]")
   orderItems  OrderItem[]
 }
 
