@@ -1,10 +1,24 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  dietaryCatalogVenueSchema,
   orderSchema,
   restaurantDetailSchema,
   restaurantSummarySchema,
 } from "./api-schemas";
+
+test("dietaryCatalogVenueSchema accepts lean menu tag payloads", () => {
+  const parsed = dietaryCatalogVenueSchema.parse({
+    id: "r1",
+    menuItems: [
+      { dietaryTags: '["vegan"]', allergens: "[]" },
+      { dietaryTags: "[]", allergens: '["peanuts"]' },
+    ],
+  });
+  assert.equal(parsed.id, "r1");
+  assert.equal(parsed.menuItems.length, 2);
+  assert.equal(parsed.menuItems[0]?.dietaryTags, '["vegan"]');
+});
 
 test("restaurantSummarySchema accepts FastAPI camelCase payloads", () => {
   const parsed = restaurantSummarySchema.parse({

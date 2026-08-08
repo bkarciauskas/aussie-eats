@@ -81,6 +81,19 @@ export const restaurantDetailSchema = restaurantSummarySchema.extend({
 
 export type RestaurantDetail = z.infer<typeof restaurantDetailSchema>;
 
+/** Lean menu fields for browse diet matching (no full menus/reviews). */
+export const dietaryCatalogItemSchema = z.object({
+  dietaryTags: z.string().default("[]"),
+  allergens: z.string().default("[]"),
+});
+
+export const dietaryCatalogVenueSchema = z.object({
+  id: z.string().min(1),
+  menuItems: z.array(dietaryCatalogItemSchema).default([]),
+});
+
+export type DietaryCatalogVenue = z.infer<typeof dietaryCatalogVenueSchema>;
+
 export const orderItemSchema = z.object({
   id: z.string().min(1),
   orderId: z.string().min(1),

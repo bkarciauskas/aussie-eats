@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { listFavouriteRestaurantIds } from "@/app/actions/favourites";
-import { getRestaurantBySlug, listRestaurants } from "@/lib/backend";
+import { listDietaryCatalog, listRestaurants } from "@/lib/backend";
 import { RestaurantFilters } from "@/components/restaurant-filters";
 import { RestaurantsExplorer, type ExplorerRestaurant } from "@/components/restaurants-explorer";
 import { distanceKm, parseCuisineTags, parseOrigin } from "@/lib/restaurants";
@@ -38,24 +38,15 @@ type Props = {
 /** Venue ids with at least one item matching every diet; null when unfiltered. */
 async function venueIdsMatchingDiets(
   diets: readonly DietId[],
-  restaurants: { id: string; slug: string }[],
 ): Promise<Set<string> | null> {
   if (diets.length === 0) return null;
 
-  const details = await Promise.all(
-    restaurants.map((restaurant) =>
-      getRestaurantBySlug(restaurant.slug).catch(() => null),
-    ),
-  );
+  const venues = await listDietaryCatalog({ activeOnly: true });
 
   return new Set(
-    details
-      .filter((detail): detail is NonNullable<typeof detail> => Boolean(detail))
+    venues
       .filter((venue) =>
-        restaurantMatchesDiets(
-          { menuItems: venue.categories.flatMap((category) => category.items) },
-          diets,
-        ),
+        restaurantMatchesDiets({ menuItems: venue.menuItems }, diets),
       )
       .map((venue) => venue.id),
   );
@@ -81,10 +72,10 @@ export default async function RestaurantsPage({ searchParams }: Props) {
   const cityPin = findDemoCity(cityFilter);
   const etaOrigin = origin ?? (cityPin ? { lat: cityPin.lat, lng: cityPin.lng } : null);
 
-  const restaurants = await listRestaurants({ activeOnly: true });
-  const [favouriteIds, dietMatchedIds] = await Promise.all([
+  const [restaurants, favouriteIds, dietMatchedIds] = await Promise.all([
+    listRestaurants({ activeOnly: true }),
     listFavouriteRestaurantIds(),
-    venueIdsMatchingDiets(activeDiets, restaurants),
+    venueIdsMatchingDiets(activeDiets),
   ]);
 
   const allCuisines = Array.from(

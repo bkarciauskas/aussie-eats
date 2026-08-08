@@ -8,6 +8,8 @@ from app.deps import DbDep
 from app.mongo_util import strip_mongo_id
 from app.schemas import (
     CategoryOut,
+    DietaryCatalogItem,
+    DietaryCatalogVenue,
     MenuItemOut,
     RestaurantDetail,
     RestaurantSummary,
@@ -34,6 +36,58 @@ async def list_restaurants(
         if cleaned:
             out.append(_restaurant_summary(cleaned))
     return out
+
+
+@router.get("/dietary-catalog", response_model=list[DietaryCatalogVenue])
+async def dietary_catalog(
+    db: DbDep,
+    active_only: bool = Query(default=True, alias="activeOnly"),
+) -> list[DietaryCatalogVenue]:
+    """One-shot menu diet tags for browse filters (no reviews / full menus)."""
+    query: dict = {"isActive": True} if active_only else {}
+    restaurants: list[dict] = []
+    async for doc in db.restaurants.find(query):
+        cleaned = strip_mongo_id(doc)
+        if cleaned:
+            restaurants.append(cleaned)
+
+    if not restaurants:
+        return []
+
+    restaurant_ids = [r["id"] for r in restaurants]
+    category_to_restaurant: dict[str, str] = {}
+    async for cat in db.categories.find({"restaurantId": {"$in": restaurant_ids}}):
+        cat_doc = strip_mongo_id(cat)
+        if cat_doc:
+            category_to_restaurant[cat_doc["id"]] = cat_doc["restaurantId"]
+
+    items_by_restaurant: dict[str, list[DietaryCatalogItem]] = {
+        r["id"]: [] for r in restaurants
+    }
+    if category_to_restaurant:
+        async for item in db.menu_items.find(
+            {"categoryId": {"$in": list(category_to_restaurant.keys())}}
+        ):
+            item_doc = strip_mongo_id(item)
+            if item_doc is None:
+                continue
+            restaurant_id = category_to_restaurant.get(item_doc["categoryId"])
+            if restaurant_id is None:
+                continue
+            items_by_restaurant[restaurant_id].append(
+                DietaryCatalogItem(
+                    dietaryTags=item_doc.get("dietaryTags", "[]"),
+                    allergens=item_doc.get("allergens", "[]"),
+                )
+            )
+
+    return [
+        DietaryCatalogVenue(
+            id=r["id"],
+            menuItems=items_by_restaurant.get(r["id"], []),
+        )
+        for r in restaurants
+    ]
 
 
 @router.get("/{slug}", response_model=RestaurantDetail)

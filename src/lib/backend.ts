@@ -2,6 +2,7 @@ import { ApiError, apiFetch, apiFetchAuthed, okResponseSchema } from "@/lib/api"
 import {
   adminDashboardSchema,
   categorySchema,
+  dietaryCatalogVenueSchema,
   favouriteIdsSchema,
   orderSchema,
   placeOrderResponseSchema,
@@ -10,6 +11,7 @@ import {
   reviewSchema,
   searchSuggestSchema,
   toggleFavouriteSchema,
+  type DietaryCatalogVenue,
   type Order,
   type RestaurantDetail,
   type RestaurantSummary,
@@ -38,6 +40,17 @@ export async function getRestaurantBySlug(slug: string): Promise<RestaurantDetai
     if (err instanceof ApiError && err.status === 404) return null;
     throw err;
   }
+}
+
+/** One catalog query of menu diet tags for browse filters. */
+export async function listDietaryCatalog(options?: {
+  activeOnly?: boolean;
+}): Promise<DietaryCatalogVenue[]> {
+  const activeOnly = options?.activeOnly ?? true;
+  const query = activeOnly ? "" : "?activeOnly=false";
+  return apiFetch(`/restaurants/dietary-catalog${query}`, {
+    schema: z.array(dietaryCatalogVenueSchema),
+  });
 }
 
 export async function listMyOrders(): Promise<Order[]> {
