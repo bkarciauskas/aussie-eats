@@ -24,15 +24,16 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ### Large catalog (Google Places)
 
-One-shot ingest into SQLite (~100 restaurants per major city, ~600 total).
+One-shot ingest into Mongo (~100 restaurants per major city, ~600 total).
 
 ```bash
 # Enable the (legacy) Places API on the Google Cloud project, then:
 npm run db:import-places
 # optional: -- --per-city=100 -- --city=sydney
+# equivalent: cd backend && python3 -m app.import_places
 ```
 
-Uses Nearby Search / Text Search / Details / Photo. Expect several minutes and Places quota. Re-runs upsert by `placeId` and skip cached photos under `public/images/imported/`. Menus are cuisine-templated (Places has no menus). Venue details are sourced from Google Places; menus are demo-generated.
+Uses Nearby Search / Text Search / Details / Photo. Expect several minutes and Places quota. Re-runs upsert by `placeId` and skip cached photos under `public/images/imported/`. Menus are cuisine-templated (Places has no menus). Venue details are sourced from Google Places; menus are demo-generated. Legacy SQLite ingest: `npm run db:import-places:sqlite`.
 
 ### Environment
 
@@ -42,7 +43,8 @@ Uses Nearby Search / Text Search / Details / Photo. Expect several minutes and P
 | `SESSION_SECRET` | 32+ char string | iron-session cookie encryption |
 | `API_BASE_URL` | `http://127.0.0.1:8000` | FastAPI base URL for login/signup JWT bridge |
 | `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | browser key | Maps JS + Places autocomplete on `/restaurants` |
-| `GOOGLE_PLACES_API_KEY` | server key | `db:import-places` (falls back to the Maps key) |
+| `GOOGLE_PLACES_API_KEY` | server key | `db:import-places` → Mongo (falls back to the Maps key) |
+| `MONGODB_URI` / `MONGODB_DB` | Atlas or local URI | FastAPI + `db:seed:mongo` / `db:import-places` |
 
 ### Demo logins
 
@@ -57,7 +59,8 @@ Uses Nearby Search / Text Search / Details / Photo. Expect several minutes and P
 npm run db:seed                        # users; orders/reviews if missing; keeps catalog
 FORCE_SEED_ORDERS=1 npm run db:seed    # rebuild sample orders + reviews
 npm run db:reset                       # drop DB, migrate, seed (catalog empty until import or fallback)
-npm run db:import-places               # pull/refresh real venues into SQLite
+npm run db:import-places               # pull/refresh real venues into Mongo
+npm run db:import-places:sqlite        # legacy Prisma → SQLite ingest
 ```
 
 ## Presenter script (≈3 minutes)
@@ -89,7 +92,7 @@ npm run db:import-places               # pull/refresh real venues into SQLite
 ## Architecture notes
 
 - **Persistence:** SQLite via Prisma (`prisma/dev.db`) — survives refresh; no separate DB server
-- **Catalog ingest:** `scripts/import-places.ts` → upsert by `placeId`; photos in `public/images/imported/`
+- **Catalog ingest:** `backend/app/import_places.py` → Mongo upsert by `placeId`; photos in `public/images/imported/` (legacy SQLite: `scripts/import-places.ts`)
 - **Auth:** FastAPI JWT via `src/lib/api.ts`; iron-session stores the Bearer token (`CUSTOMER` / `ADMIN` roles)
 - **Cart:** client React context + `localStorage`; server writes orders on checkout
 - **Money:** integer cents (`unitPriceCents` / `priceCents`); display with `formatAUD` (`en-AU`)
@@ -110,7 +113,9 @@ Deeper developer docs (browse/location, cart money, Places runbook, troubleshoot
 | `npm run dev` | Next.js dev server |
 | `npm run build` / `npm start` | Production build & serve |
 | `npm run db:seed` | Upsert demo users; seed orders/reviews if missing; bootstrap catalog if empty |
-| `npm run db:import-places` | One-shot Google Places → SQLite ingest |
+| `npm run db:import-places` | One-shot Google Places → Mongo ingest |
+| `npm run db:import-places:sqlite` | Legacy Google Places → SQLite ingest |
+| `npm run db:seed:mongo` | Mongo seed (users, handwritten catalog if empty, sample orders) |
 | `npm run db:reset` | Drop DB, migrate, seed |
 | `npm test` | Unit tests (`src/**/*.test.ts` via tsx) |
 | `npm run lint` | ESLint |

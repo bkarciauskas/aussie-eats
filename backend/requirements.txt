@@ -3,6 +3,7 @@ uvicorn[standard]
 pymongo
 pydantic
 pydantic-settings
+python-dotenv
 pyjwt
 bcrypt
 python-multipart

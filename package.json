@@ -15,8 +15,10 @@
     "db:seed": "prisma db seed",
     "db:seed:mongo": "cd backend && python3 -m app.seed",
     "db:export-seed-data": "tsx scripts/export-seed-data.mts",
+    "db:export-cuisine-templates": "tsx scripts/export-cuisine-templates.mts",
     "db:reset": "prisma migrate reset --force",
-    "db:import-places": "tsx scripts/import-places.ts",
+    "db:import-places": "cd backend && python3 -m app.import_places",
+    "db:import-places:sqlite": "tsx scripts/import-places.ts",
     "postinstall": "prisma generate"
   },
   "prisma": {
