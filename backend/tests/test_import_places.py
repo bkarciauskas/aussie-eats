@@ -214,6 +214,55 @@ async def test_upsert_venue_keeps_imported_image_when_photos_missing(tmp_path, m
 
 
 @pytest.mark.asyncio
+async def test_fetch_search_page_retries_invalid_token_then_succeeds(monkeypatch):
+    sleeps: list[float] = []
+
+    async def fake_sleep(seconds):
+        sleeps.append(seconds)
+
+    monkeypatch.setattr(ip.asyncio, "sleep", fake_sleep)
+
+    calls = {"n": 0}
+
+    async def fetch(_token):
+        calls["n"] += 1
+        # First token attempt: not yet propagated; second: ready.
+        if calls["n"] == 1:
+            return {"status": "INVALID_REQUEST"}
+        return {"status": "OK", "results": [{"place_id": "p1"}]}
+
+    payload = await ip.fetch_search_page(fetch, page_token="tok", base_delay=2.0)
+    assert payload is not None
+    assert payload["results"][0]["place_id"] == "p1"
+    assert calls["n"] == 2
+    # Slept once before first token attempt, once between retries.
+    assert len(sleeps) >= 2
+
+
+@pytest.mark.asyncio
+async def test_fetch_search_page_gives_up_on_persistent_invalid_token(monkeypatch):
+    async def fake_sleep(_seconds):
+        return None
+
+    monkeypatch.setattr(ip.asyncio, "sleep", fake_sleep)
+
+    async def fetch(_token):
+        return {"status": "INVALID_REQUEST"}
+
+    payload = await ip.fetch_search_page(fetch, page_token="tok", retries=2)
+    assert payload is None
+
+
+@pytest.mark.asyncio
+async def test_fetch_search_page_first_page_error_raises():
+    async def fetch(_token):
+        return {"status": "INVALID_REQUEST", "error_message": "bad key"}
+
+    with pytest.raises(RuntimeError, match="INVALID_REQUEST"):
+        await ip.fetch_search_page(fetch, page_token=None)
+
+
+@pytest.mark.asyncio
 async def test_api_key_prefers_places_env(monkeypatch):
     monkeypatch.setenv("GOOGLE_PLACES_API_KEY", "places-key")
     monkeypatch.setenv("NEXT_PUBLIC_GOOGLE_MAPS_API_KEY", "maps-key")

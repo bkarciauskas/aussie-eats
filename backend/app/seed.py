@@ -1,4 +1,4 @@
-"""Mongo seed ported from prisma/seed.ts.
+"""Mongo seed: users, catalog snapshot restore, sample orders/reviews.
 
 Usage (from backend/):
   python3 -m app.seed
@@ -18,6 +18,7 @@ from typing import Any, Optional
 
 from pymongo.asynchronous.database import AsyncDatabase
 
+from app.catalog_snapshot import SNAPSHOT_PATH, load_snapshot, restore_catalog_snapshot
 from app.db import close_db, connect_db, ensure_indexes
 from app.domain.cities import DEMO_CITIES
 from app.domain.dietary import (
@@ -33,6 +34,7 @@ from app.models import OrderStatus, Role
 from app.security import hash_password
 
 SEED_DATA_PATH = Path(__file__).with_name("seed_data.json")
+CATALOG_SNAPSHOT_PATH = SNAPSHOT_PATH
 
 STATUS_STEPS = (
     OrderStatus.pending.value,
@@ -176,6 +178,7 @@ async def ensure_users(db: AsyncDatabase) -> list[dict[str, Any]]:
 
 
 async def bootstrap_handwritten_restaurants_if_empty(db: AsyncDatabase) -> None:
+    """Load seed_data.json venues when the catalog is empty and no snapshot applies."""
     count = await db.restaurants.count_documents({})
     if count > 0:
         print(f"  Catalog already has {count} restaurants — skipping handwritten bootstrap")
@@ -240,6 +243,31 @@ async def bootstrap_handwritten_restaurants_if_empty(db: AsyncDatabase) -> None:
                         "allergens": item["allergens"],
                     }
                 )
+
+
+async def bootstrap_catalog_if_empty(
+    db: AsyncDatabase,
+    *,
+    snapshot_path: Path = CATALOG_SNAPSHOT_PATH,
+) -> None:
+    """Prefer committed catalog_snapshot.json; fall back to handwritten seed_data."""
+    count = await db.restaurants.count_documents({})
+    if count > 0:
+        print(f"  Catalog already has {count} restaurants — skipping catalog bootstrap")
+        return
+
+    snapshot = load_snapshot(snapshot_path)
+    if snapshot is not None:
+        counts = await restore_catalog_snapshot(db, snapshot)
+        print(
+            f"  Catalog empty — restored snapshot "
+            f"({counts['restaurants']} restaurants, "
+            f"{counts['categories']} categories, "
+            f"{counts['menu_items']} menu items)"
+        )
+        return
+
+    await bootstrap_handwritten_restaurants_if_empty(db)
 
 
 async def sync_dietary_tags_on_catalog(db: AsyncDatabase) -> None:
@@ -569,7 +597,7 @@ async def run_seed() -> None:
 
         customers = await ensure_users(db)
         print(f"  Users upserted ({len(customers)} customers + admin)")
-        await bootstrap_handwritten_restaurants_if_empty(db)
+        await bootstrap_catalog_if_empty(db)
         await sync_dietary_tags_on_catalog(db)
         await seed_dense_orders(db, customers)
 

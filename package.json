@@ -13,6 +13,7 @@
     "test": "tsx --test src/lib/*.test.ts src/components/**/*.test.ts",
     "test:backend": "cd backend && python3 -m pytest",
     "db:seed": "cd backend && python3 -m app.seed",
+    "db:export-catalog": "cd backend && python3 -m app.export_catalog",
     "db:import-places": "cd backend && python3 -m app.import_places"
   },
   "dependencies": {

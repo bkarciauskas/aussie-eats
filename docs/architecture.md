@@ -67,7 +67,7 @@ flowchart LR
 | `src/lib/opening-hours.ts` | `isOpenNow` evaluates periods in the city’s IANA timezone; falls back to `isOpen` when periods are missing. |
 | `src/lib/eta.ts` | Demo ETA: ~18 min prep + ~3.2 min/km travel, clamped to 15–75 min. Origin is URL lat/lng, else the demo city pin. |
 
-Runtime browse does **not** call Google. Hours/ratings come from seed or one-shot ingest (`npm run db:import-places` → `backend/app/import_places.py`).
+Runtime browse does **not** call Google. Hours/ratings come from the seed snapshot or an optional Places refresh (`npm run db:import-places` → `backend/app/import_places.py`).
 
 ## Orders and admin
 
@@ -94,8 +94,9 @@ Roles `CUSTOMER` | `ADMIN` in `src/lib/roles.ts`. Route guards: `requireUser` / 
 ## Persistence and seed
 
 - Collections live in Mongo (`MONGODB_URI` / `MONGODB_DB`). There is no Prisma/SQLite path.
-- `npm run db:seed` → `cd backend && python3 -m app.seed` upserts demo users, bootstraps the handwritten catalog only when empty, and seeds sample orders/reviews once (unless `FORCE_SEED_ORDERS=1`).
-- Places ingest: `npm run db:import-places` upserts by `placeId`; photos under `public/images/imported/`.
+- `npm run db:seed` → `cd backend && python3 -m app.seed` upserts demo users, restores `catalog_snapshot.json` when the catalog is empty (handwritten `seed_data.json` if the snapshot is missing), and seeds sample orders/reviews once (unless `FORCE_SEED_ORDERS=1`).
+- Snapshot export: `npm run db:export-catalog` writes `backend/app/catalog_snapshot.json` from Mongo.
+- Places refresh: `npm run db:import-places` upserts by `placeId`; photos under `public/images/imported/` (gitignored; seed falls back to stock images when missing).
 
 ## Tests
 

@@ -28,6 +28,7 @@ import httpx
 from dotenv import load_dotenv
 from pymongo.asynchronous.database import AsyncDatabase
 
+from app.catalog_snapshot import fallback_image_for_cuisine
 from app.db import close_db, connect_db, ensure_indexes
 from app.domain.cities import DEMO_CITIES, DemoCity
 from app.domain.cuisine_menu_templates import (
@@ -204,27 +205,6 @@ def periods_to_opening_hours_json(opening: Optional[dict[str, Any]]) -> Optional
     )
 
 
-def fallback_image_for_cuisine(tags: list[str]) -> str:
-    joined = " ".join(tags).lower()
-    if "burger" in joined:
-        return "/images/restaurants/burger.jpg"
-    if "thai" in joined:
-        return "/images/restaurants/thai.jpg"
-    if "pizza" in joined or "italian" in joined:
-        return "/images/restaurants/pizza.jpg"
-    if "cafe" in joined or "brunch" in joined:
-        return "/images/restaurants/cafe.jpg"
-    if "sushi" in joined or "japanese" in joined or "seafood" in joined:
-        return "/images/restaurants/sushi.jpg"
-    if "indian" in joined:
-        return "/images/restaurants/indian.jpg"
-    if "mexican" in joined:
-        return "/images/restaurants/mexican.jpg"
-    if "bakery" in joined:
-        return "/images/restaurants/bakery.jpg"
-    return "/images/restaurants/burger.jpg"
-
-
 def delivery_fees(rating: float) -> dict[str, int]:
     delivery_fee_cents = (
         350 + round((5 - min(rating, 5)) * 80) + (50 if random.random() > 0.5 else 0)
@@ -336,6 +316,38 @@ async def place_details(
     return payload.get("result")
 
 
+async def fetch_search_page(
+    fetch: Any,
+    *,
+    page_token: Optional[str],
+    retries: int = 4,
+    base_delay: float = 2.0,
+) -> Optional[dict[str, Any]]:
+    """Fetch one Places search page, tolerating page-token propagation lag.
+
+    The legacy Places API returns INVALID_REQUEST when a next_page_token is used
+    before Google has activated it. That delay is variable, so a single fixed
+    sleep is flaky. For token pages we wait, then retry INVALID_REQUEST with
+    backoff; if it never activates we return None so the caller stops paging that
+    center rather than aborting the whole import. First-page (no token) errors
+    still surface, since those signal a real key/enablement problem.
+    """
+    delay = base_delay
+    for attempt in range(retries + 1):
+        if page_token and attempt == 0:
+            await asyncio.sleep(base_delay)
+        payload = await fetch(page_token)
+        status = payload.get("status", "")
+        if not page_token or status != "INVALID_REQUEST":
+            assert_places_ok(status, payload.get("error_message"))
+            return payload
+        if attempt == retries:
+            return None
+        await asyncio.sleep(delay)
+        delay += 1.0
+    return None
+
+
 async def collect_place_ids_for_city(
     client: httpx.AsyncClient,
     *,
@@ -362,13 +374,15 @@ async def collect_place_ids_for_city(
         if len(found) >= per_city:
             break
         page_token: Optional[str] = None
-        for page in range(3):
-            if page > 0:
-                await asyncio.sleep(2)
-            payload = await nearby_page(
-                client, key=key, center=center, page_token=page_token
+        for _page in range(3):
+            payload = await fetch_search_page(
+                lambda token, c=center: nearby_page(
+                    client, key=key, center=c, page_token=token
+                ),
+                page_token=page_token,
             )
-            assert_places_ok(payload.get("status", ""), payload.get("error_message"))
+            if payload is None:
+                break
             ingest_results(payload.get("results"))
             page_token = payload.get("next_page_token")
             if not page_token or len(found) >= per_city:
@@ -382,17 +396,19 @@ async def collect_place_ids_for_city(
                 break
             query = f"{cuisine} in {city['label']}"
             page_token = None
-            for page in range(2):
-                if page > 0:
-                    await asyncio.sleep(2)
-                payload = await text_search_page(
-                    client,
-                    key=key,
-                    query=query,
-                    center=center,
+            for _page in range(2):
+                payload = await fetch_search_page(
+                    lambda token, q=query, c=center: text_search_page(
+                        client,
+                        key=key,
+                        query=q,
+                        center=c,
+                        page_token=token,
+                    ),
                     page_token=page_token,
                 )
-                assert_places_ok(payload.get("status", ""), payload.get("error_message"))
+                if payload is None:
+                    break
                 ingest_results(payload.get("results"))
                 page_token = payload.get("next_page_token")
                 if not page_token or len(found) >= per_city:
