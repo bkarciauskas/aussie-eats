@@ -23,7 +23,7 @@ flowchart LR
 | `src/components/location-provider.tsx` | Session pin in `localStorage` key `aussieeats_location_v1`. |
 | `src/components/restaurant-search.tsx` | Hero/header search waits for hydration so a saved pin is not dropped, then navigates to `/restaurants?...`. |
 | `src/app/(store)/restaurants/page.tsx` | Loads active restaurants, filters by `q` / cuisine / city / open-now / diet+allergy, optionally sorts by Haversine distance when `lat`/`lng` are present. |
-| `src/lib/dietary.ts` | Diet filter ids, URL parsing (`diet=…`, `allergy=nuts`), conservative item/venue match (untagged ≠ nut-free). |
+| `src/lib/dietary.ts` | Diet filter ids, URL parsing (`diet=…`, `allergy=nuts`), conservative item match (untagged ≠ nut-free). A venue matches only when one item satisfies every selected diet, so browse results and the filtered menu agree; the venue-level `dietaryTags` union is display-only. |
 
 **Constraints:**
 

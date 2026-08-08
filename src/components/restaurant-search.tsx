@@ -12,7 +12,10 @@ import {
   type KeyboardEvent,
 } from "react";
 import { useLocation } from "@/components/location-provider";
-import { buildRestaurantSearchParams } from "@/lib/restaurant-query";
+import {
+  buildRestaurantSearchParams,
+  buildSuggestionPath,
+} from "@/lib/restaurant-query";
 import {
   clearRecentSearches,
   isSearchSuggestion,
@@ -107,16 +110,28 @@ function RestaurantSearchForm({
       .map((label) => ({ kind: "recent", label }));
   }
 
-  function addLocationParams(params: URLSearchParams) {
+  function locationParams(): Record<string, string> {
     if (
       location &&
       Number.isFinite(location.lat) &&
       Number.isFinite(location.lng)
     ) {
-      params.set("lat", String(location.lat));
-      params.set("lng", String(location.lng));
-      params.set("place", location.label);
+      return {
+        lat: String(location.lat),
+        lng: String(location.lng),
+        place: location.label,
+      };
     }
+    return {};
+  }
+
+  function suggestionPath(path: string, params?: Record<string, string>) {
+    return buildSuggestionPath({
+      path,
+      params,
+      diet: searchParams.get("diet"),
+      allergy: searchParams.get("allergy"),
+    });
   }
 
   function navigate(path: string) {
@@ -147,20 +162,26 @@ function RestaurantSearchForm({
 
     switch (suggestion.kind) {
       case "restaurant":
-        navigate(`/restaurants/${encodeURIComponent(suggestion.slug)}`);
+        navigate(
+          suggestionPath(`/restaurants/${encodeURIComponent(suggestion.slug)}`),
+        );
         break;
-      case "cuisine": {
-        const params = new URLSearchParams({ cuisine: suggestion.label });
-        addLocationParams(params);
-        navigate(`/restaurants?${params.toString()}`);
+      case "cuisine":
+        navigate(
+          suggestionPath("/restaurants", {
+            cuisine: suggestion.label,
+            ...locationParams(),
+          }),
+        );
         break;
-      }
-      case "city": {
-        const params = new URLSearchParams({ city: suggestion.cityId });
-        addLocationParams(params);
-        navigate(`/restaurants?${params.toString()}`);
+      case "city":
+        navigate(
+          suggestionPath("/restaurants", {
+            city: suggestion.cityId,
+            ...locationParams(),
+          }),
+        );
         break;
-      }
       case "suburb":
       case "recent":
         navigateText(suggestion.label);

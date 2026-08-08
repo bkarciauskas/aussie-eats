@@ -73,15 +73,38 @@ describe("itemMatchesDiets (conservative)", () => {
 });
 
 describe("restaurantMatchesDiets", () => {
-  it("hides venues not tagged for the selected diet", () => {
+  it("hides venues with no item tagged for the selected diet", () => {
     assert.equal(
-      restaurantMatchesDiets({ dietaryTags: '["vegan"]' }, ["nut-free"]),
+      restaurantMatchesDiets(
+        { menuItems: [{ dietaryTags: '["vegan"]', allergens: "[]" }] },
+        ["nut-free"],
+      ),
       false,
     );
     assert.equal(
       restaurantMatchesDiets(
-        { dietaryTags: '["vegan","nut-free"]' },
+        { menuItems: [{ dietaryTags: '["vegan","nut-free"]', allergens: "[]" }] },
         ["nut-free"],
+      ),
+      true,
+    );
+  });
+
+  it("requires a single item to satisfy every diet, not the menu union", () => {
+    const menuItems = [
+      { dietaryTags: '["vegan","vegetarian"]', allergens: "[]" },
+      { dietaryTags: '["gluten-free"]', allergens: "[]" },
+    ];
+    assert.equal(restaurantMatchesDiets({ menuItems }, ["vegan", "gluten-free"]), false);
+    assert.equal(
+      restaurantMatchesDiets(
+        {
+          menuItems: [
+            ...menuItems,
+            { dietaryTags: '["vegan","vegetarian","gluten-free"]', allergens: "[]" },
+          ],
+        },
+        ["vegan", "gluten-free"],
       ),
       true,
     );

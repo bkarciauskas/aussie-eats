@@ -57,6 +57,8 @@ const GLUTEN_FREE_RE = /\b(gluten-?free|\bgf\b)\b/i;
 const HALAL_RE = /\bhalal\b/i;
 const DRINK_RE =
   /\b(ginger beer|lemonade|sparkling water|flat white|iced latte|fresh juice|hot chocolate|miso soup)\b/i;
+const DAIRY_DRINK_RE =
+  /\b(flat white|latte|cappuccino|macchiato|mocha|chai|hot chocolate|milkshake|thickshake|thai iced tea|milk|cream|yoghurt)\b/i;
 const SAFE_SIDE_RE =
   /\b(jasmine rice|thick-cut chips|extra chips|chips|onion rings|garlic bread|edamame|seaweed salad|garden salad|side salad|raita|guacamole & chips)\b/i;
 
@@ -112,12 +114,13 @@ export function tagMenuItem(input: TagInput): TaggedMenuFields {
     diets.add("nut-free");
   }
 
-  // Drinks are usually vegan + gluten-free in this demo catalog.
+  // Drinks in this demo catalog are gluten-free and halal, but milk-based ones
+  // (flat white, latte, hot chocolate) are only vegetarian — never vegan.
   if (looksLikeDrink) {
-    diets.add("vegan");
     diets.add("vegetarian");
     diets.add("gluten-free");
     diets.add("halal");
+    if (!DAIRY_DRINK_RE.test(haystack)) diets.add("vegan");
   }
 
   // Vegan implies vegetarian.

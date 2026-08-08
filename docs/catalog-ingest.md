@@ -40,7 +40,7 @@ Args are parsed in `scripts/import-places.ts` (`--city=` id or label, `--per-cit
 3. Downloads photos to `public/images/imported/` (skipped if already cached).
 4. Attaches a **cuisine-templated menu** from `prisma/cuisine-menu-templates.ts` (Places has no menus). Menus are created on **insert only** — re-import updates venue fields, not menu items. Dietary / allergen tags on those menus are **demo approximations** from cuisine templates (`prisma/tag-menu-item.ts`); Places has no real allergen data. Do not treat them as medical-grade.
 
-Venue fields updated on re-import include name, description, image, cuisine tags, city/suburb, lat/lng, rating, rating count, opening hours JSON, phone, `isOpen`. Dietary tags on existing menus are not refreshed by re-import; run `npm run db:seed` to backfill empty tags.
+Venue fields updated on re-import include name, description, image, cuisine tags, city/suburb, lat/lng, rating, rating count, opening hours JSON, phone, `isOpen`. Dietary tags on existing menus are not refreshed by re-import; run `npm run db:seed` to backfill empty tags. Already-tagged items are left alone so admin menu edits survive a reseed — use `FORCE_RETAG_DIETARY=1 npm run db:seed` when the tagging rules themselves change. A forced retag recomputes diets but keeps any allergen already recorded on the item.
 
 ## Constraints and pitfalls
 

@@ -4,7 +4,12 @@ import { restaurants } from "./seed-data";
 import { tagMenuCategories, tagMenuItem } from "./tag-menu-item";
 import { DEMO_CITIES } from "../src/lib/cities";
 import { blendRestaurantRating } from "../src/lib/reviews";
-import { parseDietaryTags, serializeTags, unionDietaryTags } from "../src/lib/dietary";
+import {
+  parseAllergens,
+  parseDietaryTags,
+  serializeTags,
+  unionDietaryTags,
+} from "../src/lib/dietary";
 
 const Role = { CUSTOMER: "CUSTOMER", ADMIN: "ADMIN" } as const;
 const OrderStatus = {
@@ -177,6 +182,9 @@ async function syncDietaryTagsOnCatalog() {
   });
   if (venues.length === 0) return;
 
+  // Tagged rows are left alone so admin menu edits survive a reseed; forcing a
+  // retag is how corrected tagging rules reach an already-seeded catalog.
+  const forceRetag = process.env.FORCE_RETAG_DIETARY === "1";
   let updatedItems = 0;
   let updatedRestaurants = 0;
 
@@ -195,27 +203,22 @@ async function syncDietaryTagsOnCatalog() {
     for (const cat of venue.categories) {
       for (const item of cat.items) {
         const existingDiets = parseDietaryTags(item.dietaryTags);
-        const existingAllergens = (() => {
-          try {
-            const parsed: unknown = JSON.parse(item.allergens);
-            return Array.isArray(parsed)
-              ? parsed.filter((t): t is string => typeof t === "string")
-              : [];
-          } catch {
-            return [] as string[];
-          }
-        })();
+        const existingAllergens = parseAllergens(item.allergens);
         const needsTag =
-          existingDiets.length === 0 && existingAllergens.length === 0;
+          forceRetag ||
+          (existingDiets.length === 0 && existingAllergens.length === 0);
         if (!needsTag) {
           itemTags.push({ dietaryTags: item.dietaryTags });
           continue;
         }
+        // Diets are recomputed, but a recorded allergen is never forgotten —
+        // heuristics cannot re-derive it from copy like "Custard, passionfruit icing".
         const tagged = tagMenuItem({
           name: item.name,
           description: item.description,
           categoryName: cat.name,
           cuisineKey,
+          allergens: existingAllergens,
         });
         await prisma.menuItem.update({
           where: { id: item.id },
@@ -497,6 +500,7 @@ async function main() {
   );
   console.log("  Tip: run `npm run db:import-places` once to pull ~100 real venues per city.");
   console.log("  Tip: FORCE_SEED_ORDERS=1 npm run db:seed to rebuild sample orders/reviews.");
+  console.log("  Tip: FORCE_RETAG_DIETARY=1 npm run db:seed to recompute dietary tags.");
 }
 
 main()

@@ -90,3 +90,23 @@ export function buildRestaurantSearchParams(
 
   return params;
 }
+
+export type BuildSuggestionPathInput = {
+  /** Destination path, e.g. `/restaurants` or `/restaurants/longrain-melbourne`. */
+  path: string;
+  /** Destination params such as `cuisine`, `city`, and the location pin. */
+  params?: Record<string, string>;
+  diet?: string | null;
+  allergy?: string | null;
+};
+
+/** Build a suggestion destination that keeps any active diet/allergy filter. */
+export function buildSuggestionPath(input: BuildSuggestionPathInput): string {
+  const params = new URLSearchParams(input.params);
+  applyDietSearchParams(
+    params,
+    parseDietQuery({ diet: input.diet, allergy: input.allergy }),
+  );
+  const qs = params.toString();
+  return qs ? `${input.path}?${qs}` : input.path;
+}

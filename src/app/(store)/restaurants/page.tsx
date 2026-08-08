@@ -18,6 +18,7 @@ import {
   dietLabels,
   parseDietQuery,
   restaurantMatchesDiets,
+  type DietId,
 } from "@/lib/dietary";
 
 type Props = {
@@ -33,6 +34,32 @@ type Props = {
     allergy?: string;
   }>;
 };
+
+/** Venue ids with at least one item matching every diet; null when unfiltered. */
+async function venueIdsMatchingDiets(
+  diets: readonly DietId[],
+): Promise<Set<string> | null> {
+  if (diets.length === 0) return null;
+
+  const venues = await prisma.restaurant.findMany({
+    where: { isActive: true },
+    select: {
+      id: true,
+      categories: { select: { items: { select: { dietaryTags: true } } } },
+    },
+  });
+
+  return new Set(
+    venues
+      .filter((venue) =>
+        restaurantMatchesDiets(
+          { menuItems: venue.categories.flatMap((category) => category.items) },
+          diets,
+        ),
+      )
+      .map((venue) => venue.id),
+  );
+}
 
 export default async function RestaurantsPage({ searchParams }: Props) {
   const {
@@ -54,12 +81,13 @@ export default async function RestaurantsPage({ searchParams }: Props) {
   const cityPin = findDemoCity(cityFilter);
   const etaOrigin = origin ?? (cityPin ? { lat: cityPin.lat, lng: cityPin.lng } : null);
 
-  const [restaurants, favouriteIds] = await Promise.all([
+  const [restaurants, favouriteIds, dietMatchedIds] = await Promise.all([
     prisma.restaurant.findMany({
       where: { isActive: true },
       orderBy: [{ city: "asc" }, { rating: "desc" }, { name: "asc" }],
     }),
     listFavouriteRestaurantIds(),
+    venueIdsMatchingDiets(activeDiets),
   ]);
 
   const allCuisines = Array.from(
@@ -78,7 +106,7 @@ export default async function RestaurantsPage({ searchParams }: Props) {
       city: r.city,
     });
     const matchesOpen = !openNowOnly || openNow;
-    const matchesDiet = restaurantMatchesDiets(r, activeDiets);
+    const matchesDiet = !dietMatchedIds || dietMatchedIds.has(r.id);
     return matchesQ && matchesCuisine && matchesCity && matchesOpen && matchesDiet;
   });
 

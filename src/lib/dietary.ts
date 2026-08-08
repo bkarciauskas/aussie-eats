@@ -128,13 +128,18 @@ export function itemMatchesDiets(
   return diets.every((diet) => tags.has(diet));
 }
 
+/**
+ * A venue matches only when one menu item satisfies every selected diet.
+ * The venue's own `dietaryTags` is a union across the menu, so it can report
+ * vegan + gluten-free when separate items supply each tag and the filtered menu
+ * would render empty.
+ */
 export function restaurantMatchesDiets(
-  restaurant: { dietaryTags: string },
+  restaurant: { menuItems: readonly DietaryTagged[] },
   diets: readonly DietId[],
 ): boolean {
   if (diets.length === 0) return true;
-  const tags = new Set(parseDietaryTags(restaurant.dietaryTags));
-  return diets.every((diet) => tags.has(diet));
+  return restaurant.menuItems.some((item) => itemMatchesDiets(item, diets));
 }
 
 export function dietLabels(diets: readonly DietId[]): string[] {
