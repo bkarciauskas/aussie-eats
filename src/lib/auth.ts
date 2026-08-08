@@ -1,27 +1,37 @@
-import bcrypt from "bcryptjs";
-import { prisma } from "@/lib/db";
-import { Role } from "@/lib/roles";
-import { getSession } from "@/lib/session";
+import {
+  ApiError,
+  apiFetch,
+  authResponseSchema,
+  okResponseSchema,
+} from "@/lib/api";
+import { clearSession, establishSession, getAccessToken } from "@/lib/session";
+
+function authFailureMessage(err: unknown, fallback: string): string {
+  if (err instanceof ApiError) {
+    return err.detail || fallback;
+  }
+  return fallback;
+}
 
 export async function loginWithPassword(email: string, password: string) {
-  const user = await prisma.user.findUnique({ where: { email: email.toLowerCase().trim() } });
-  if (!user) {
-    return { error: "Invalid email or password." as const };
+  try {
+    const auth = await apiFetch("/auth/login", {
+      method: "POST",
+      body: { email, password },
+      schema: authResponseSchema,
+    });
+    await establishSession(auth);
+    return {
+      user: {
+        id: auth.user.id,
+        email: auth.user.email,
+        name: auth.user.name,
+        role: auth.user.role,
+      },
+    };
+  } catch (err) {
+    return { error: authFailureMessage(err, "Invalid email or password.") };
   }
-  const ok = await bcrypt.compare(password, user.passwordHash);
-  if (!ok) {
-    return { error: "Invalid email or password." as const };
-  }
-
-  const session = await getSession();
-  session.userId = user.id;
-  session.email = user.email;
-  session.name = user.name;
-  session.role = user.role as Role;
-  session.isLoggedIn = true;
-  await session.save();
-
-  return { user: { id: user.id, email: user.email, name: user.name, role: user.role } };
 }
 
 export async function signupCustomer(name: string, email: string, password: string) {
@@ -33,39 +43,44 @@ export async function signupCustomer(name: string, email: string, password: stri
   if (!normalizedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
     return { error: "Please enter a valid email address." as const };
   }
-
-  const existing = await prisma.user.findUnique({
-    where: { email: normalizedEmail },
-  });
-  if (existing) {
-    return { error: "An account with that email already exists." as const };
-  }
   if (password.length < 6) {
     return { error: "Password must be at least 6 characters." as const };
   }
 
-  const passwordHash = await bcrypt.hash(password, 10);
-  const user = await prisma.user.create({
-    data: {
-      name: trimmedName,
-      email: normalizedEmail,
-      passwordHash,
-      role: Role.CUSTOMER,
-    },
-  });
-
-  const session = await getSession();
-  session.userId = user.id;
-  session.email = user.email;
-  session.name = user.name;
-  session.role = user.role as Role;
-  session.isLoggedIn = true;
-  await session.save();
-
-  return { user: { id: user.id, email: user.email, name: user.name, role: user.role } };
+  try {
+    const auth = await apiFetch("/auth/signup", {
+      method: "POST",
+      body: { name: trimmedName, email: normalizedEmail, password },
+      schema: authResponseSchema,
+    });
+    await establishSession(auth);
+    return {
+      user: {
+        id: auth.user.id,
+        email: auth.user.email,
+        name: auth.user.name,
+        role: auth.user.role,
+      },
+    };
+  } catch (err) {
+    return {
+      error: authFailureMessage(err, "Unable to create account. Please try again."),
+    };
+  }
 }
 
 export async function logout() {
-  const session = await getSession();
-  session.destroy();
+  const token = await getAccessToken();
+  if (token) {
+    try {
+      await apiFetch("/auth/logout", {
+        method: "POST",
+        token,
+        schema: okResponseSchema,
+      });
+    } catch {
+      // JWT is client-held; always clear the local session even if the ACK fails.
+    }
+  }
+  await clearSession();
 }

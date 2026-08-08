@@ -40,6 +40,7 @@ Uses Nearby Search / Text Search / Details / Photo. Expect several minutes and P
 | --- | --- | --- |
 | `DATABASE_URL` | `file:./dev.db` | SQLite file at `prisma/dev.db` |
 | `SESSION_SECRET` | 32+ char string | iron-session cookie encryption |
+| `API_BASE_URL` | `http://127.0.0.1:8000` | FastAPI base URL for login/signup JWT bridge |
 | `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | browser key | Maps JS + Places autocomplete on `/restaurants` |
 | `GOOGLE_PLACES_API_KEY` | server key | `db:import-places` (falls back to the Maps key) |
 
@@ -89,7 +90,7 @@ npm run db:import-places               # pull/refresh real venues into SQLite
 
 - **Persistence:** SQLite via Prisma (`prisma/dev.db`) — survives refresh; no separate DB server
 - **Catalog ingest:** `scripts/import-places.ts` → upsert by `placeId`; photos in `public/images/imported/`
-- **Auth:** email/password + iron-session cookies (`CUSTOMER` / `ADMIN` roles)
+- **Auth:** FastAPI JWT via `src/lib/api.ts`; iron-session stores the Bearer token (`CUSTOMER` / `ADMIN` roles)
 - **Cart:** client React context + `localStorage`; server writes orders on checkout
 - **Money:** integer cents (`unitPriceCents` / `priceCents`); display with `formatAUD` (`en-AU`)
 - **Location:** demo city pins in `localStorage`; `/restaurants` filters by city label via `matchesRestaurantCity`

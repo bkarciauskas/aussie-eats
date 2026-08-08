@@ -7,7 +7,19 @@ export type SessionData = {
   email?: string;
   name?: string;
   role?: Role;
+  /** Backend JWT from FastAPI /auth/login or /auth/signup. */
+  accessToken?: string;
   isLoggedIn: boolean;
+};
+
+export type SessionAuthPayload = {
+  access_token: string;
+  user: {
+    id: string;
+    email: string;
+    name: string;
+    role: Role;
+  };
 };
 
 export const sessionOptions: SessionOptions = {
@@ -25,9 +37,34 @@ export async function getSession() {
   return getIronSession<SessionData>(await cookies(), sessionOptions);
 }
 
+export async function getAccessToken(): Promise<string | null> {
+  const session = await getSession();
+  if (!session.isLoggedIn || !session.accessToken) {
+    return null;
+  }
+  return session.accessToken;
+}
+
+/** Persist FastAPI auth response into the iron-session cookie (user fields + JWT). */
+export async function establishSession(auth: SessionAuthPayload) {
+  const session = await getSession();
+  session.userId = auth.user.id;
+  session.email = auth.user.email;
+  session.name = auth.user.name;
+  session.role = auth.user.role;
+  session.accessToken = auth.access_token;
+  session.isLoggedIn = true;
+  await session.save();
+}
+
+export async function clearSession() {
+  const session = await getSession();
+  session.destroy();
+}
+
 export async function requireUser() {
   const session = await getSession();
-  if (!session.isLoggedIn || !session.userId) {
+  if (!session.isLoggedIn || !session.userId || !session.accessToken) {
     return null;
   }
   return session;
