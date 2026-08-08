@@ -5,13 +5,13 @@ description: Drive the AussieEats Next.js storefront and admin the way a user do
 
 # Verify AussieEats
 
-Project-local control skill for the AussieEats multi-vendor food delivery demo (Next.js App Router + Prisma/SQLite). Agents read this cold mid-task — follow it exactly.
+Project-local control skill for the AussieEats multi-vendor food delivery demo (Next.js App Router + FastAPI + MongoDB). Agents read this cold mid-task — follow it exactly.
 
 ## Surface
 
 Primary: **web UI** at `http://127.0.0.1:$PORT` (default verify port **3010**).
 
-Also present (secondary): JSON-ish RSC HTML over HTTP; SQLite at `prisma/dev.db`; demo auth cookies via iron-session.
+Also required: **FastAPI** at `http://127.0.0.1:$API_PORT` (default **8000**), health `GET /health` → `{"status":"ok"}`. Demo auth is iron-session (cookie) holding a FastAPI JWT; catalog/orders live in Mongo.
 
 ## Launch
 
@@ -19,16 +19,17 @@ Prefer an **isolated** verify instance. Do **not** drive a shared `npm run dev` 
 
 ```bash
 # From repo root. Writes pid/port under the skill's .run/ dir.
+# Starts FastAPI (if needed) then Next.js.
 .cursor/skills/verify-aussie-eats/helpers/launch.sh
 ```
 
-- Command under the hood: `PORT=$PORT npm run dev` (Next.js).
-- Ready when `doctor.sh` exits 0 (home HTML contains `AussieEats` and `restaurant-search-hero`).
-- Default `PORT=3010`. Override: `PORT=3011 .cursor/skills/verify-aussie-eats/helpers/launch.sh`
-- Prerequisites (once per checkout): `.env` present (`cp .env.example .env` if missing), `npm install`, `npx prisma migrate dev`, `npm run db:seed`.
-- Teardown: `.cursor/skills/verify-aussie-eats/helpers/cleanup.sh` (kills **only** the pid recorded at launch).
+- Under the hood: uvicorn on `API_PORT` (reuses a healthy existing listener), then `PORT=$PORT npm run dev` with `API_BASE_URL` pointed at that API.
+- Ready when `doctor.sh` exits 0 (API `/health` ok **and** home HTML contains `AussieEats` + `restaurant-search-hero`).
+- Defaults: `PORT=3010`, `API_PORT=8000`. Override: `PORT=3011 API_PORT=8001 .cursor/skills/verify-aussie-eats/helpers/launch.sh`
+- Prerequisites (once per checkout): root `.env` + `backend/.env` (`cp` from each `.env.example` if missing), `MONGODB_URI` reachable, `npm install`, `cd backend && python3 -m pip install -r requirements.txt` (or use `backend/.venv`), `npm run db:seed`.
+- Teardown: `.cursor/skills/verify-aussie-eats/helpers/cleanup.sh` (kills **only** pids this skill recorded — Next always; FastAPI only if launch started it).
 
-SQLite is shared with any other local instance pointing at `prisma/dev.db`. Prefer **read-only** proofs (browse/search) on a shared DB; for checkout/admin writes, use an isolated DB via `DATABASE_URL="file:./verify.db"` only when you also migrate+seed that file, or accept mutating the demo DB.
+Mongo is shared with any other local instance using the same `MONGODB_URI` / `MONGODB_DB`. Prefer **read-only** proofs (browse/search) on a shared DB; for checkout/admin writes, accept mutating the demo DB or use a dedicated Atlas/local database via env.
 
 ## Doctor
 
@@ -36,7 +37,7 @@ SQLite is shared with any other local instance pointing at `prisma/dev.db`. Pref
 .cursor/skills/verify-aussie-eats/helpers/doctor.sh
 ```
 
-Checks: `.run/port` exists, TCP responds, home body includes `AussieEats` + hero search id, and (when `.run/pid` exists) that pid still owns the port. Exit 0 = safe to drive.
+Checks: FastAPI `GET /health` succeeds, `.run/port` exists (or default), Next home body includes `AussieEats` + hero search id, and (when `.run/pid` exists) that pid still owns the Next port. **Exit non-zero if the API is down** — even when Next still serves HTML. Exit 0 = safe to drive.
 
 ## Drive
 
@@ -73,7 +74,7 @@ Each proof must include:
 2. **Result** — screenshot/HTML of the resulting state (e.g. `/restaurants?q=burger` listing Harbour Burger Co).
 3. **`proof.json`** — `{ feature, baseUrl, steps[], passed, at }` with observable assertions (URL, visible text).
 
-Standards: real user path only (no internal setters / test-only endpoints). Capture action **and** resulting state. Verify side effects when the feature has them (orders row, cart badge, admin status). Mocks only at true production boundaries (this app has none for food data — it is local SQLite).
+Standards: real user path only (no internal setters / test-only endpoints). Capture action **and** resulting state. Verify side effects when the feature has them (orders row, cart badge, admin status). Mocks only at true production boundaries (food data is Mongo via FastAPI — not mocked in-app).
 
 Evidence **survives** cleanup. Do not commit screenshots (`evidence/` is gitignored).
 
@@ -83,7 +84,7 @@ Evidence **survives** cleanup. Do not commit screenshots (`evidence/` is gitigno
 .cursor/skills/verify-aussie-eats/helpers/cleanup.sh
 ```
 
-Stops the instance started by `launch.sh` (pid file). Never `killall node` / never kill by process name. Leaves `evidence/` intact. Removes `.run/pid` (and port file) after a clean stop.
+Stops the Next instance started by `launch.sh` (pid file). Stops FastAPI only when launch recorded `api_started`. Never `killall node` / `killall uvicorn` / never kill by process name. Leaves `evidence/` intact. Removes `.run` tracking files after a clean stop.
 
 ## Helpers
 
@@ -91,10 +92,10 @@ All under `.cursor/skills/verify-aussie-eats/helpers/` and executable:
 
 | Script | Purpose |
 | --- | --- |
-| `launch.sh` | Start isolated Next dev server; record pid/port |
-| `doctor.sh` | Read-only health check |
+| `launch.sh` | Start FastAPI (if needed) + isolated Next; record pids/ports |
+| `doctor.sh` | Read-only health check (API `/health` + Next home) |
 | `drive.mjs` | Playwright driver for a feature stem |
-| `cleanup.sh` | Tear down launch.sh instance only |
+| `cleanup.sh` | Tear down launch.sh-owned processes only |
 
 ## Feature map
 
