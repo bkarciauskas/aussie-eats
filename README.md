@@ -96,11 +96,12 @@ npm run db:import-places               # pull/refresh real venues into SQLite
 - **Location:** demo city pins in `localStorage`; `/restaurants` filters by city label via `matchesRestaurantCity`
 - **Images:** local assets under `public/images/`
 
-Deeper developer docs (browse/location, cart money, Places runbook, troubleshooting):
+Deeper developer docs (browse/location, cart money, Places runbook, Cloud Agents, troubleshooting):
 
 - [docs/README.md](./docs/README.md)
 - [docs/architecture.md](./docs/architecture.md)
 - [docs/catalog-ingest.md](./docs/catalog-ingest.md)
+- [docs/cloud-agents.md](./docs/cloud-agents.md) — secrets (`MONGODB_URI`, `JWT_SECRET`) and Network Access for `*.mongodb.net`
 - [docs/troubleshooting.md](./docs/troubleshooting.md)
 
 ## Useful scripts
