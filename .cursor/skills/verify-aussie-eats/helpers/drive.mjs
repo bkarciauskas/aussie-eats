@@ -304,24 +304,42 @@ async function run() {
       await page.goto(baseUrl + "/admin/orders", { waitUntil: "networkidle" });
       await page.getByRole("heading", { name: "Orders" }).waitFor();
 
+      const pendingBefore = await page.locator('[data-status="pending"]').count();
+      const preparingBefore = await page.locator('[data-status="preparing"]').count();
       const pendingRow = page.locator("tr", { has: page.locator('[data-status="pending"]') }).first();
       await pendingRow.waitFor({ state: "visible", timeout: 15000 });
       await page.screenshot({
         path: join(evidenceDir, "01-action-orders-pending.png"),
         fullPage: true,
       });
-      steps.push({ action: "opened admin orders with pending row" });
+      steps.push({ action: "opened admin orders with pending row", pendingBefore, preparingBefore });
 
       await pendingRow.getByRole("button", { name: /→ Preparing/i }).click();
-      await pendingRow.locator('[data-status="preparing"]').waitFor({ timeout: 15000 });
+      // Row leaves the pending filter once status updates — wait on page-level counts.
+      await page.waitForFunction(
+        ({ pendingBefore: p0, preparingBefore: r0 }) => {
+          const pending = document.querySelectorAll('[data-status="pending"]').length;
+          const preparing = document.querySelectorAll('[data-status="preparing"]').length;
+          return pending < p0 && preparing > r0;
+        },
+        { pendingBefore, preparingBefore },
+        { timeout: 15000 },
+      );
       await page.screenshot({
         path: join(evidenceDir, "02-result-status-preparing.png"),
         fullPage: true,
       });
-      const preparingCount = await page.locator('[data-status="preparing"]').count();
-      steps.push({ result: "advanced pending → preparing", preparingCount });
-      passed = preparingCount > 0;
-      if (!passed) error = "order status did not advance to preparing";
+      const pendingAfter = await page.locator('[data-status="pending"]').count();
+      const preparingAfter = await page.locator('[data-status="preparing"]').count();
+      steps.push({
+        result: "advanced pending → preparing",
+        pendingAfter,
+        preparingAfter,
+      });
+      passed = pendingAfter < pendingBefore && preparingAfter > preparingBefore;
+      if (!passed) {
+        error = `order status did not advance: pending ${pendingBefore}→${pendingAfter}, preparing ${preparingBefore}→${preparingAfter}`;
+      }
     } else if (feature === "admin-menu-edit") {
       await page.goto(baseUrl + "/admin/login", { waitUntil: "networkidle" });
       await page.locator('input[name="email"]').fill("admin@aussieeats.local");
