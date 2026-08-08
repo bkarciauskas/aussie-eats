@@ -11,11 +11,8 @@ NEXT_LOG=/tmp/cursor/aussie-eats/next.log
 
 port_listening() {
   local port="$1"
-  if command -v ss >/dev/null 2>&1; then
-    ss -ltn "sport = :${port}" 2>/dev/null | grep -q ":${port}"
-  else
-    curl -sf --max-time 1 "http://127.0.0.1:${port}" >/dev/null 2>&1
-  fi
+  # TCP connect only — FastAPI serves 404 on /, so HTTP status checks are wrong here.
+  (echo >/dev/tcp/127.0.0.1/"${port}") >/dev/null 2>&1
 }
 
 wait_http() {
