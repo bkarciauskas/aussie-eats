@@ -12,21 +12,26 @@ Local-only multi-vendor food delivery demo (customer storefront + `/admin`) buil
 
 ## Quick start
 
+Two processes: **FastAPI** on `:8000` (Mongo) and **Next.js** on `:3000`. Seed before the first browse.
+
 ```bash
 cp .env.example .env
 cp backend/.env.example backend/.env
+# Point MONGODB_URI at Atlas or local Mongo in both env files as needed.
 npm install
 cd backend && python3 -m pip install -r requirements.txt && cd ..
 npm run db:seed
-# terminal 1
+# terminal 1 — API (required for login, catalog, checkout, admin)
 cd backend && python3 -m uvicorn app.main:app --reload --port 8000
-# terminal 2
+# terminal 2 — UI
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open [http://localhost:3000](http://localhost:3000). Confirm the API with `curl -sf http://127.0.0.1:8000/health`.
 
-`db:seed` upserts demo users. If the restaurant catalog is empty it loads the handwritten fallback (~23 venues). Sample orders and customer reviews are written once into Mongo and left alone on later seed runs (use `FORCE_SEED_ORDERS=1` to rebuild them). It does **not** wipe Places-imported restaurants.
+`db:seed` upserts demo users into Mongo (`python3 -m app.seed`). If the restaurant catalog is empty it loads the handwritten fallback (~23 venues). Sample orders and customer reviews are written once into Mongo and left alone on later seed runs (use `FORCE_SEED_ORDERS=1` to rebuild them). It does **not** wipe Places-imported restaurants. There is no Prisma migrate step.
+
+Cloud Agents install a venv and start both services via [`.cursor/environment.json`](./.cursor/environment.json) → [`scripts/cloud-agent-start.sh`](./scripts/cloud-agent-start.sh) (see [docs/cloud-agents.md](./docs/cloud-agents.md)).
 
 ### Large catalog (Google Places)
 
@@ -80,7 +85,8 @@ npm run db:import-places               # pull/refresh real venues into Mongo
 
 ## Smoke checklist
 
-- [ ] `npm install && npm run db:seed && npm run dev` (with FastAPI up) starts cleanly
+- [ ] `npm install`, pip install `backend/requirements.txt`, `npm run db:seed`, then uvicorn `:8000` + `npm run dev` start cleanly
+- [ ] `GET /health` on FastAPI returns `{"status":"ok"}` while the storefront loads
 - [ ] Unauthenticated browse of `/restaurants` and a menu works
 - [ ] Home hero search and header search both land on `/restaurants?q=…` (with `city` when a demo pin is set)
 - [ ] Demo city picker sets location for the session (localStorage); city filter on `/restaurants` works
