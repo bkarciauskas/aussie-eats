@@ -6,7 +6,7 @@ Quick fixes for issues that have already bitten this codebase. Verify against cu
 
 | Symptom | Likely cause | Fix |
 | --- | --- | --- |
-| Empty restaurant list after reset | Catalog wiped | `npm run db:seed` (handwritten) and/or `npm run db:import-places` |
+| Empty restaurant list after reset | Catalog wiped | `npm run db:seed` (restores `catalog_snapshot.json`) |
 | `db:import-places` throws missing key | No Places key in `.env` / `backend/.env` | Set `GOOGLE_PLACES_API_KEY` (or Maps key fallback); enable legacy Places API |
 | Import fails with REQUEST_DENIED | Wrong API product or key restrictions | Use legacy Places API; avoid HTTP-referrer restriction on the server key |
 | Import cannot reach Mongo | Missing `MONGODB_URI` | Set Atlas/local URI in `backend/.env` (see `backend/.env.example`) |
@@ -53,8 +53,9 @@ Quick fixes for issues that have already bitten this codebase. Verify against cu
 # Users + orders; keep restaurant catalog
 npm run db:seed
 
-# Drop DB, migrate, seed (catalog empty → handwritten fallback)
-npm run db:reset
+# Drop restaurants/categories/menu_items, then seed (catalog empty → snapshot restore)
+# (There is no npm run db:reset in this repo — clear those collections in Mongo, then:)
+npm run db:seed
 
 # Clear browser demo state
 # localStorage: aussieeats_cart_v1, aussieeats_location_v1

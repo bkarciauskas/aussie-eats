@@ -52,14 +52,14 @@ After pull, check what changed:
 | `package.json` / lockfile | Already covered by `npm install` |
 | `backend/requirements.txt` | Already covered by pip install above |
 | Missing env files | `cp .env.example .env` and/or `cp backend/.env.example backend/.env` (never overwrite secrets) |
-| Empty Mongo catalog / missing demo users, or first checkout | `npm run db:seed` (and optionally `npm run db:import-places` for the large catalog) |
+| Empty Mongo catalog / missing demo users, or first checkout | `npm run db:seed` (restores committed catalog snapshot; Places import only to refresh) |
 | Only app/docs/skill changes | Skip seed |
 
 How to decide quickly after pull:
 
 ```bash
 # backend / seed inputs in the pulled commits?
-git diff --name-only HEAD@{1} HEAD -- backend/requirements.txt backend/app/seed.py backend/app/seed_data.json
+git diff --name-only HEAD@{1} HEAD -- backend/requirements.txt backend/app/seed.py backend/app/seed_data.json backend/app/catalog_snapshot.json backend/app/catalog_snapshot.py
 
 # API reachable? (needs uvicorn + Mongo)
 curl -sf http://127.0.0.1:8000/health || echo "api down"
@@ -67,7 +67,7 @@ curl -sf http://127.0.0.1:8000/health || echo "api down"
 
 Notes:
 
-- `npm run db:seed` → `cd backend && python3 -m app.seed`. It upserts demo users and seeds sample orders/reviews **only when missing**. It bootstraps handwritten restaurants **only if the catalog is empty**; it does **not** delete Places-imported rows. Use `FORCE_SEED_ORDERS=1` only when you intentionally want to rebuild demo orders/reviews.
+- `npm run db:seed` → `cd backend && python3 -m app.seed`. It upserts demo users and seeds sample orders/reviews **only when missing**. If the catalog is empty it restores `backend/app/catalog_snapshot.json` (or handwritten `seed_data.json` if the snapshot is absent); it does **not** delete existing catalog rows. Use `FORCE_SEED_ORDERS=1` only when you intentionally want to rebuild demo orders/reviews. Do not run `db:import-places` on every pull — that is a slow Google refresh; re-export with `db:export-catalog` after a deliberate Places run.
 - Prefer `backend/.venv` when present (Cloud Agent install creates it); otherwise system `python3 -m pip` / `python3 -m uvicorn` is fine for local machines.
 - Never drop or wipe the Mongo database as part of pull-and-restart unless the user explicitly asks.
 

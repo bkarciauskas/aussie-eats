@@ -29,22 +29,23 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000). Confirm the API with `curl -sf http://127.0.0.1:8000/health`.
 
-`db:seed` upserts demo users into Mongo (`python3 -m app.seed`). If the restaurant catalog is empty it loads the handwritten fallback (~23 venues). Sample orders and customer reviews are written once into Mongo and left alone on later seed runs (use `FORCE_SEED_ORDERS=1` to rebuild them). It does **not** wipe Places-imported restaurants. There is no Prisma migrate step.
+`db:seed` upserts demo users into Mongo (`python3 -m app.seed`). If the restaurant catalog is empty it restores the committed snapshot (`backend/app/catalog_snapshot.json`, hundreds of venues) in seconds — no Google key. If that file is missing it falls back to the handwritten seed (~23 venues). Sample orders and customer reviews are written once into Mongo and left alone on later seed runs (use `FORCE_SEED_ORDERS=1` to rebuild them). It does **not** wipe an existing catalog. There is no Prisma migrate step.
 
 Cloud Agents install a venv and start both services via [`.cursor/environment.json`](./.cursor/environment.json) → [`scripts/cloud-agent-start.sh`](./scripts/cloud-agent-start.sh) (see [docs/cloud-agents.md](./docs/cloud-agents.md)).
 
-### Large catalog (Google Places)
+### Refresh catalog (Google Places, optional)
 
-One-shot ingest into Mongo (~100 restaurants per major city, ~600 total).
+Rare refresh into Mongo (~100 restaurants per major city when run fully). Prefer `db:seed` for day-to-day setup.
 
 ```bash
 # Enable the (legacy) Places API on the Google Cloud project, then:
 npm run db:import-places
 # optional: -- --per-city=100 -- --city=sydney
-# equivalent: cd backend && python3 -m app.import_places
+# After a successful refresh, rewrite the committed snapshot:
+npm run db:export-catalog
 ```
 
-Uses Nearby Search / Text Search / Details / Photo. Expect several minutes and Places quota. Re-runs upsert by `placeId` and skip cached photos under `public/images/imported/`. Menus are cuisine-templated (Places has no menus). Venue details are sourced from Google Places; menus are demo-generated.
+Uses Nearby Search / Text Search / Details / Photo. Expect several minutes and Places quota. Re-runs upsert by `placeId` and skip cached photos under `public/images/imported/`. Menus are cuisine-templated (Places has no menus). Venue details are sourced from Google Places; menus are demo-generated. Imported JPGs are gitignored; snapshot restore falls back to cuisine stock images when those files are missing.
 
 ### Environment
 
@@ -52,7 +53,7 @@ Uses Nearby Search / Text Search / Details / Photo. Expect several minutes and P
 | --- | --- | --- |
 | `SESSION_SECRET` | 32+ char string | iron-session cookie encryption |
 | `API_BASE_URL` | `http://127.0.0.1:8000` | FastAPI base URL for login/signup JWT bridge |
-| `MONGODB_URI` / `MONGODB_DB` | Atlas or local URI | FastAPI + `db:seed` / `db:import-places` |
+| `MONGODB_URI` / `MONGODB_DB` | Atlas or local URI | FastAPI + `db:seed` / `db:export-catalog` / `db:import-places` |
 | `JWT_SECRET` | 32+ char string | FastAPI JWT signing |
 | `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | browser key | Maps JS + Places autocomplete on `/restaurants` |
 | `GOOGLE_PLACES_API_KEY` | server key | `db:import-places` (falls back to the Maps key) |
@@ -67,9 +68,10 @@ Uses Nearby Search / Text Search / Details / Photo. Expect several minutes and P
 ### Reset
 
 ```bash
-npm run db:seed                        # users; orders/reviews if missing; keeps catalog
+npm run db:seed                        # users; orders/reviews if missing; restore snapshot if catalog empty
 FORCE_SEED_ORDERS=1 npm run db:seed    # rebuild sample orders + reviews
-npm run db:import-places               # pull/refresh real venues into Mongo
+npm run db:import-places               # rare: pull/refresh real venues into Mongo
+npm run db:export-catalog              # rewrite catalog_snapshot.json from Mongo
 ```
 
 ## Presenter script (≈3 minutes)
@@ -90,7 +92,7 @@ npm run db:import-places               # pull/refresh real venues into Mongo
 - [ ] Unauthenticated browse of `/restaurants` and a menu works
 - [ ] Home hero search and header search both land on `/restaurants?q=…` (with `city` when a demo pin is set)
 - [ ] Demo city picker sets location for the session (localStorage); city filter on `/restaurants` works
-- [ ] Seed / import includes restaurants across Sydney, Melbourne, Brisbane, Perth, Adelaide, and Hobart
+- [ ] Seed restores restaurants across Sydney, Melbourne, Brisbane, Perth, Adelaide, and Hobart (snapshot; Places import only to refresh)
 - [ ] Open now filter, rating counts, hours, and delivery ETA appear when data/location allow
 - [ ] Cart works without login; checkout requires login
 - [ ] Placing an order with any mocked payment method creates status `pending`, clears cart, and shows the payment method in `/orders`
@@ -102,7 +104,7 @@ npm run db:import-places               # pull/refresh real venues into Mongo
 ## Architecture notes
 
 - **Persistence:** MongoDB via FastAPI (`backend/`) — Atlas or local
-- **Catalog ingest:** `backend/app/import_places.py` → upsert by `placeId`; photos in `public/images/imported/`
+- **Catalog:** `db:seed` restores `backend/app/catalog_snapshot.json` when empty; `db:import-places` is an optional Google refresh; photos under `public/images/imported/`
 - **Auth:** FastAPI JWT via `src/lib/api.ts`; iron-session stores the Bearer token (`CUSTOMER` / `ADMIN` roles)
 - **Cart:** client React context + `localStorage`; server writes orders on checkout
 - **Money:** integer cents (`unitPriceCents` / `priceCents`); display with `formatAUD` (`en-AU`)
@@ -123,8 +125,9 @@ Deeper developer docs (browse/location, cart money, Places runbook, Cloud Agents
 | --- | --- |
 | `npm run dev` | Next.js dev server |
 | `npm run build` / `npm start` | Production build & serve |
-| `npm run db:seed` | Upsert demo users; seed orders/reviews if missing; bootstrap catalog if empty |
-| `npm run db:import-places` | One-shot Google Places → Mongo ingest |
+| `npm run db:seed` | Upsert demo users; seed orders/reviews if missing; restore catalog snapshot if empty |
+| `npm run db:export-catalog` | Write `catalog_snapshot.json` from current Mongo catalog |
+| `npm run db:import-places` | Optional Google Places → Mongo refresh (then export snapshot) |
 | `npm test` | Unit tests (`src/**/*.test.ts` via tsx) |
 | `npm run test:backend` | FastAPI pytest suite (`backend/tests`) |
 | `npm run lint` | ESLint |

@@ -93,6 +93,10 @@ class FakeCollection:
     async def insert_one(self, doc: dict[str, Any]):
         self.docs.append(copy.deepcopy(doc))
 
+    async def insert_many(self, docs: list[dict[str, Any]]):
+        for doc in docs:
+            self.docs.append(copy.deepcopy(doc))
+
     async def update_one(self, query: dict[str, Any], update: dict[str, Any]):
         for doc in self.docs:
             if _match(doc, query):

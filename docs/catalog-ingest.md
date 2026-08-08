@@ -1,21 +1,27 @@
-# Catalog ingest (Google Places → Mongo)
+# Catalog ingest (snapshot + Google Places)
 
-One-shot script that fills the restaurant catalog with real venues. **Browse never calls Places at runtime.**
+Browse never calls Places at runtime. The storefront reads Mongo only.
 
-The ingest lives in `backend/app/import_places.py` (`npm run db:import-places`).
+| Path | Command | When |
+| --- | --- | --- |
+| **Fast default** | `npm run db:seed` | Empty catalog → restores committed `catalog_snapshot.json` (hundreds of venues) in seconds |
+| Handwritten fallback | (automatic if snapshot missing) | ~23 venues from `seed_data.json` |
+| Places refresh | `npm run db:import-places` | Rare: pull/update real venues from Google, then re-export snapshot |
+| Export snapshot | `npm run db:export-catalog` | After a Places refresh, rewrite `backend/app/catalog_snapshot.json` |
 
-## When to use
+## Seed / wipe behaviour
 
 | Situation | Action |
 | --- | --- |
-| Fresh DB, want handwritten demo (~23 venues) | `npm run db:seed` only |
-| Want ~100 venues per capital (~600 total) | `npm run db:import-places` after Mongo is reachable |
-| Refresh venue metadata / photos | Re-run import (upserts by `placeId`) |
-| Wipe handwritten + imported catalog | Drop/clear the `restaurants` / `categories` / `menu_items` collections, then seed and optionally import |
+| Fresh DB, want the full demo catalog | `npm run db:seed` only (uses the snapshot) |
+| Refresh venue metadata / photos from Google | `npm run db:import-places`, then `npm run db:export-catalog` and commit the snapshot |
+| Wipe handwritten + imported catalog | Drop/clear the `restaurants` / `categories` / `menu_items` collections, then `npm run db:seed` |
 
-`db:seed` upserts users and seeds sample orders/reviews **only when they are missing**. It bootstraps handwritten restaurants **only if the catalog is empty** — it does not delete Places-imported rows. Use `FORCE_SEED_ORDERS=1 npm run db:seed` to wipe and rebuild sample orders/reviews.
+`db:seed` upserts users and seeds sample orders/reviews **only when they are missing**. It restores the snapshot (or handwritten fallback) **only if the catalog is empty** — it does not delete Places-imported rows. Use `FORCE_SEED_ORDERS=1 npm run db:seed` to wipe and rebuild sample orders/reviews.
 
-## Prerequisites
+Imported photos under `public/images/imported/` are gitignored. On snapshot restore, if an `/images/imported/…` file is missing locally, seed rewrites the venue image to cuisine stock art under `public/images/restaurants/`. Machines that already have the JPGs keep the real photos.
+
+## Prerequisites (Places refresh only)
 
 1. Env vars (repo-root `.env` and/or `backend/.env`):
    - `MONGODB_URI` / `MONGODB_DB` for Atlas or local Mongo
@@ -27,7 +33,13 @@ The ingest lives in `backend/app/import_places.py` (`npm run db:import-places`).
 ## Commands
 
 ```bash
-# All demo cities, up to 100 venues each → Mongo
+# Empty Mongo → restore committed snapshot (no Google key)
+npm run db:seed
+
+# After Places refresh: write catalog_snapshot.json from Mongo
+npm run db:export-catalog
+
+# All demo cities, up to 100 venues each → Mongo (slow; quota)
 npm run db:import-places
 
 # One city / smaller batch
@@ -37,9 +49,9 @@ npm run db:import-places -- --city=melbourne --per-city=20
 cd backend && python3 -m app.import_places --city=sydney --per-city=10
 ```
 
-Args: `--city=` id or label, `--per-city=` positive int.
+Args for import: `--city=` id or label, `--per-city=` positive int.
 
-## What the script does
+## What Places import does
 
 1. For each city in `DEMO_CITIES` (or the filtered city), collects place IDs via Nearby / Text Search across cuisine queries.
 2. Fetches Place Details; upserts the `restaurants` collection by unique `placeId`.
@@ -50,13 +62,13 @@ Venue fields updated on re-import include name, description, image, cuisine tags
 
 ## Constraints and pitfalls
 
-- Expect several minutes and Places quota usage; the script sleeps between requests.
+- Prefer the snapshot for setup. Places ingest takes several minutes and uses quota; the script sleeps between requests.
 - Photos under `public/images/imported/` are local assets; keep them out of accidental wipe workflows if you care about re-download cost (see `.gitignore`).
 - Delivery fee / min order are derived heuristically from rating at create time (`delivery_fees` in the script), not from Google.
 - City on the row is the demo **label** (e.g. `Sydney`) so storefront filters match `matchesRestaurantCity`.
 - Maps JS key (`NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`) is optional for distance sort / “use my location”; it is separate from ingest.
 
-## Verify after import
+## Verify after seed or import
 
 ```bash
 npm run db:seed   # safe: keeps catalog and existing orders/reviews
