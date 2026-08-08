@@ -285,7 +285,7 @@ async function run() {
       await page.waitForLoadState("networkidle");
       const orderUrl = page.url();
       const orderBody = await page.content();
-      const hasPending = /pending/i.test(orderBody);
+      const hasPending = /data-status="pending"/.test(orderBody);
       const hasCard = /Visa ending 4242|Card · Visa/i.test(orderBody);
       await page.screenshot({ path: join(evidenceDir, "03-result-order.png"), fullPage: true });
       steps.push({ result: "order placed", orderUrl, hasPending, hasCard });
