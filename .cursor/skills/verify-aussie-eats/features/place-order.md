@@ -30,6 +30,6 @@ Manual equivalent:
 - Cart cleared after place
 - `/orders` lists the new order
 - Order detail shows status pending / `Card · Visa ending 4242` / `Paid (demo)`
-- **Side effect:** row exists in SQLite `Order` (or visible in admin Orders)
+- **Side effect:** order exists in Mongo via FastAPI (visible under `/orders` or admin Orders)
 
-Mutates shared demo DB — prefer an isolated `DATABASE_URL` when parallelism matters.
+Mutates shared demo Mongo — prefer a dedicated `MONGODB_URI` / `MONGODB_DB` when parallelism matters.
