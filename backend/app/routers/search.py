@@ -91,7 +91,7 @@ async def _atlas_candidates(db, query: str) -> list[dict]:
         },
     ]
     candidates: list[dict] = []
-    async for doc in db.restaurants.aggregate(pipeline):
+    async for doc in await db.restaurants.aggregate(pipeline):
         cleaned = strip_mongo_id(doc)
         if cleaned:
             candidates.append(cleaned)

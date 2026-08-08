@@ -1,6 +1,11 @@
 from datetime import datetime, timezone
 
+import pytest
+
+from app.db import SEARCH_INDEX_NAME
 from app.domain.orders import initial_status_history
+from app.routers import search as search_module
+from tests.fake_mongo import FakeCursor
 
 
 def test_restaurants_list_and_detail(client, seed_catalog):
@@ -162,6 +167,56 @@ def test_search_suggest(client, seed_catalog):
     assert response.status_code == 200
     suggestions = response.json()["suggestions"]
     assert any(s["kind"] == "restaurant" and s["slug"] == "bondi-burger-co" for s in suggestions)
+
+
+@pytest.fixture(autouse=True)
+def _reset_atlas_search_cache():
+    search_module._atlas_ready = None
+    search_module._atlas_checked_at = 0.0
+    yield
+    search_module._atlas_ready = None
+    search_module._atlas_checked_at = 0.0
+
+
+@pytest.mark.asyncio
+async def test_atlas_candidates_awaits_async_aggregate():
+    """Async PyMongo aggregate() returns a coroutine; iterating it without await raises TypeError."""
+
+    class _AsyncAggregateCollection:
+        async def aggregate(self, pipeline):
+            assert pipeline[0]["$search"]["index"] == SEARCH_INDEX_NAME
+            return FakeCursor(
+                [
+                    {
+                        "name": "Bondi Burger Co",
+                        "slug": "bondi-burger-co",
+                        "suburb": "Bondi",
+                        "city": "Sydney",
+                        "cuisineTags": '["Burgers"]',
+                    }
+                ]
+            )
+
+    class _Db:
+        restaurants = _AsyncAggregateCollection()
+
+    candidates = await search_module._atlas_candidates(_Db(), "bondi")
+    assert candidates[0]["slug"] == "bondi-burger-co"
+
+
+def test_search_suggest_atlas_path(client, seed_catalog, fake_db):
+    async def _list_search_indexes():
+        return FakeCursor(
+            [{"name": SEARCH_INDEX_NAME, "queryable": True, "status": "READY"}]
+        )
+
+    fake_db.restaurants.list_search_indexes = _list_search_indexes
+
+    response = client.get("/search/suggest?q=bondi")
+    assert response.status_code == 200
+    suggestions = response.json()["suggestions"]
+    assert any(s["kind"] == "restaurant" and s["slug"] == "bondi-burger-co" for s in suggestions)
+    assert search_module._atlas_ready is True
 
 
 def test_openapi_lists_domain_routes(client):

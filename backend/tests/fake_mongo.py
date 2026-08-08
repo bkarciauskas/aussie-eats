@@ -119,7 +119,9 @@ class FakeCollection:
         query = query or {}
         return sum(1 for doc in self.docs if _match(doc, query))
 
-    def aggregate(self, pipeline: list[dict[str, Any]]) -> FakeCursor:
+    async def aggregate(self, pipeline: list[dict[str, Any]]) -> FakeCursor:
+        # Async PyMongo returns an awaitable cursor from aggregate(); mirror that
+        # so callers that `await collection.aggregate(...)` work in tests.
         docs = [copy.deepcopy(d) for d in self.docs]
         for stage in pipeline:
             if "$group" in stage:
@@ -136,6 +138,15 @@ class FakeCollection:
             elif "$sort" in stage:
                 for key, direction in reversed(list(stage["$sort"].items())):
                     docs.sort(key=lambda d, k=key: d.get(k), reverse=direction < 0)
+            elif "$limit" in stage:
+                docs = docs[: int(stage["$limit"])]
+            elif "$project" in stage:
+                include = {k for k, v in stage["$project"].items() if v}
+                docs = [{k: doc[k] for k in include if k in doc} for doc in docs]
+            elif "$search" in stage:
+                # Atlas Search is not emulated; keep the current doc set so
+                # typeahead tests can exercise the awaited-aggregate path.
+                continue
         return FakeCursor(docs)
 
     async def create_index(self, *_args, **_kwargs):
