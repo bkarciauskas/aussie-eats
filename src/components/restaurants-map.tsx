@@ -7,8 +7,10 @@ import {
   Marker,
   InfoWindow,
   useMap,
+  useApiIsLoaded,
 } from "@vis.gl/react-google-maps";
 import type { ExplorerRestaurant } from "@/components/restaurants-explorer";
+import { getOriginMarkerIcon } from "@/components/maps/origin-marker-icon";
 import type { Origin } from "@/lib/restaurants";
 
 const SYDNEY = { lat: -33.8688, lng: 151.2093 };
@@ -22,7 +24,7 @@ function FitBounds({
 }) {
   const map = useMap();
   useEffect(() => {
-    if (!map) return;
+    if (!map || typeof google === "undefined") return;
     const points = restaurants.map((r) => ({ lat: r.lat, lng: r.lng }));
     if (origin) points.push(origin);
     if (points.length === 0) return;
@@ -36,6 +38,41 @@ function FitBounds({
     map.fitBounds(bounds, 64);
   }, [map, restaurants, origin]);
   return null;
+}
+
+function OriginMarker({ position }: { position: Origin }) {
+  // Re-render once APIProvider finishes loading; never read `google` before that.
+  const apiIsLoaded = useApiIsLoaded();
+  if (!apiIsLoaded) return null;
+
+  const icon = getOriginMarkerIcon();
+  if (!icon) return null;
+
+  return <Marker position={position} title="Your location" icon={icon} />;
+}
+
+function RestaurantMarkers({
+  restaurants,
+  onActivate,
+}: {
+  restaurants: ExplorerRestaurant[];
+  onActivate: (id: string) => void;
+}) {
+  const apiIsLoaded = useApiIsLoaded();
+  if (!apiIsLoaded) return null;
+
+  return (
+    <>
+      {restaurants.map((r) => (
+        <Marker
+          key={r.id}
+          position={{ lat: r.lat, lng: r.lng }}
+          title={r.name}
+          onClick={() => onActivate(r.id)}
+        />
+      ))}
+    </>
+  );
 }
 
 export function RestaurantsMap({
@@ -69,29 +106,9 @@ export function RestaurantsMap({
       >
         <FitBounds restaurants={restaurants} origin={origin} />
 
-        {origin ? (
-          <Marker
-            position={origin}
-            title="Your location"
-            icon={{
-              path: google.maps.SymbolPath.CIRCLE,
-              scale: 8,
-              fillColor: "#2563eb",
-              fillOpacity: 1,
-              strokeColor: "#ffffff",
-              strokeWeight: 2,
-            }}
-          />
-        ) : null}
+        {origin ? <OriginMarker position={origin} /> : null}
 
-        {restaurants.map((r) => (
-          <Marker
-            key={r.id}
-            position={{ lat: r.lat, lng: r.lng }}
-            title={r.name}
-            onClick={() => onActivate(r.id)}
-          />
-        ))}
+        <RestaurantMarkers restaurants={restaurants} onActivate={onActivate} />
 
         {active ? (
           <InfoWindow
