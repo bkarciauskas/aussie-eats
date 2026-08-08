@@ -68,7 +68,15 @@ STATE_FIND_RE = re.compile(r"\b(NSW|VIC|QLD|WA|SA|TAS|ACT|NT)\b", re.I)
 def _load_env() -> None:
     # Places keys live in the repo-root .env; Mongo settings in backend/.env.
     load_dotenv(REPO_ROOT / ".env")
+    places_key = os.environ.get("GOOGLE_PLACES_API_KEY", "").strip()
+    maps_key = os.environ.get("NEXT_PUBLIC_GOOGLE_MAPS_API_KEY", "").strip()
     load_dotenv(BACKEND_ROOT / ".env", override=True)
+    # Empty GOOGLE_PLACES_API_KEY= (or Maps key) in backend/.env must not wipe a
+    # non-empty value already loaded from the repo-root .env.
+    if places_key and not os.environ.get("GOOGLE_PLACES_API_KEY", "").strip():
+        os.environ["GOOGLE_PLACES_API_KEY"] = places_key
+    if maps_key and not os.environ.get("NEXT_PUBLIC_GOOGLE_MAPS_API_KEY", "").strip():
+        os.environ["NEXT_PUBLIC_GOOGLE_MAPS_API_KEY"] = maps_key
 
 
 def _utc_now() -> datetime:
@@ -428,6 +436,9 @@ async def upsert_venue(
     cuisine_tags = cuisine["cuisineTags"]
 
     image = fallback_image_for_cuisine(cuisine_tags)
+    cached_rel, cached_abs = photo_paths(place_id)
+    if cached_abs.exists():
+        image = cached_rel
     photos = details.get("photos") or []
     photo_ref = (photos[0] or {}).get("photo_reference") if photos else None
     if photo_ref:
@@ -438,11 +449,12 @@ async def upsert_venue(
                 photo_reference=photo_ref,
                 place_id=place_id,
             )
-            image = photo["path"]
-            if photo["cached"]:
-                stats["photosCached"] += 1
-            elif str(photo["path"]).startswith("/images/imported/"):
-                stats["photosDownloaded"] += 1
+            if str(photo["path"]).startswith("/images/imported/"):
+                image = photo["path"]
+                if photo["cached"]:
+                    stats["photosCached"] += 1
+                else:
+                    stats["photosDownloaded"] += 1
             await asyncio.sleep(0.05)
         except Exception:
             pass
@@ -450,7 +462,8 @@ async def upsert_venue(
     rating = float(details.get("rating") or 4.4)
     user_rating_count = int(details.get("user_ratings_total") or 0)
     opening = details.get("opening_hours") or {}
-    is_open = bool(opening.get("open_now", True))
+    # open_now is a point-in-time Places snapshot; do not persist it as the durable
+    # isOpen gate used by checkout. Store hours in openingHoursJson instead.
     opening_hours_json = periods_to_opening_hours_json(opening)
     editorial = ((details.get("editorial_summary") or {}).get("overview") or "").strip()
     description = (
@@ -462,6 +475,13 @@ async def upsert_venue(
     now = _utc_now()
 
     existing = await db.restaurants.find_one({"placeId": place_id})
+    if (
+        existing is not None
+        and not str(image).startswith("/images/imported/")
+    ):
+        prev_image = existing.get("image")
+        if isinstance(prev_image, str) and prev_image.startswith("/images/imported/"):
+            image = prev_image
     if existing is not None:
         await db.restaurants.update_one(
             {"placeId": place_id},
@@ -479,7 +499,7 @@ async def upsert_venue(
                     "userRatingCount": user_rating_count,
                     "openingHoursJson": opening_hours_json,
                     "phone": phone,
-                    "isOpen": is_open,
+                    "isOpen": True,
                     "isActive": True,
                     "updatedAt": now,
                 }
@@ -515,7 +535,7 @@ async def upsert_venue(
             "userRatingCount": user_rating_count,
             "openingHoursJson": opening_hours_json,
             "phone": phone,
-            "isOpen": is_open,
+            "isOpen": True,
             "isActive": True,
             "createdAt": now,
             "updatedAt": now,
