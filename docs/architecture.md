@@ -69,8 +69,10 @@ Allowed transitions: `pending → preparing|cancelled`, `preparing → out_for_d
 
 ## Auth and sessions
 
-- iron-session cookies (`SESSION_SECRET`); roles `CUSTOMER` | `ADMIN` in `src/lib/roles.ts`.
-- Admin routes guarded via `requireAdmin` / admin layout; storefront checkout uses `requireUser`.
+- iron-session cookies (`SESSION_SECRET`) store user fields plus the FastAPI JWT (`accessToken`).
+- Login/signup go through `src/lib/api.ts` → `POST /auth/login|signup`; `establishSession` persists the JWT.
+- Authenticated backend calls use `apiFetchAuthed` (`Authorization: Bearer …`). Missing/invalid tokens clear the session.
+- Roles `CUSTOMER` | `ADMIN` in `src/lib/roles.ts`. Route guards: `requireUser` / `requireAdmin` (require a JWT).
 
 ## Tests
 
