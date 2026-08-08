@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from app.db import close_db, connect_db, ensure_indexes
+from app.db import close_db, connect_db, ensure_indexes, ensure_search_indexes
 from app.routers import admin, auth, favourites, orders, restaurants, reviews, search
 
 
@@ -10,6 +10,7 @@ from app.routers import admin, auth, favourites, orders, restaurants, reviews, s
 async def lifespan(_app: FastAPI):
     await connect_db()
     await ensure_indexes()
+    await ensure_search_indexes()
     try:
         yield
     finally:

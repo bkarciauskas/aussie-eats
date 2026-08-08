@@ -1,12 +1,29 @@
 from typing import Optional
 
-from pymongo import ASCENDING, AsyncMongoClient
+from pymongo import ASCENDING, DESCENDING, AsyncMongoClient
 from pymongo.asynchronous.database import AsyncDatabase
+from pymongo.errors import PyMongoError
 
 from app.config import get_settings
 
 _client: Optional[AsyncMongoClient] = None
 _db: Optional[AsyncDatabase] = None
+
+# Atlas Search index that powers /search/suggest typeahead. Autocomplete on the
+# fields users type against; string mappings let cuisine/city match by token.
+SEARCH_INDEX_NAME = "restaurants_autocomplete"
+SEARCH_INDEX_DEFINITION = {
+    "mappings": {
+        "dynamic": False,
+        "fields": {
+            "name": [{"type": "autocomplete"}, {"type": "string"}],
+            "suburb": [{"type": "autocomplete"}, {"type": "string"}],
+            "city": {"type": "string"},
+            "cuisineTags": {"type": "string"},
+            "isActive": {"type": "boolean"},
+        },
+    }
+}
 
 
 def get_client() -> AsyncMongoClient:
@@ -50,6 +67,10 @@ async def ensure_indexes() -> None:
     await db.restaurants.create_index("placeId", unique=True, sparse=True)
     await db.restaurants.create_index([("city", ASCENDING), ("isActive", ASCENDING)])
     await db.restaurants.create_index("isActive")
+    # Backs the browse/suggest sort: filter active, then rating desc, name asc.
+    await db.restaurants.create_index(
+        [("isActive", ASCENDING), ("rating", DESCENDING), ("name", ASCENDING)]
+    )
 
     await db.favourites.create_index(
         [("userId", ASCENDING), ("restaurantId", ASCENDING)],
@@ -76,3 +97,34 @@ async def ensure_indexes() -> None:
     await db.reviews.create_index("userId")
     await db.reviews.create_index("restaurantId")
     await db.reviews.create_index([("restaurantId", ASCENDING), ("createdAt", ASCENDING)])
+
+
+async def ensure_search_indexes() -> None:
+    """Create the restaurants Atlas Search index if the deployment supports it.
+
+    No-op on deployments without Atlas Search (local mongod, the test double):
+    the collection simply won't expose the search-index helpers, and any Atlas
+    error is swallowed so startup never depends on search being available.
+    """
+    collection = get_db().restaurants
+    create = getattr(collection, "create_search_index", None)
+    lister = getattr(collection, "list_search_indexes", None)
+    if create is None or lister is None:
+        return
+
+    try:
+        from pymongo.operations import SearchIndexModel
+
+        async for existing in await lister():
+            if existing.get("name") == SEARCH_INDEX_NAME:
+                return
+        await create(
+            SearchIndexModel(
+                definition=SEARCH_INDEX_DEFINITION,
+                name=SEARCH_INDEX_NAME,
+            )
+        )
+    except PyMongoError:
+        # Shared tier without Search, or a transient Atlas error: suggest falls
+        # back to the in-memory ranking path, so this is not fatal.
+        return
