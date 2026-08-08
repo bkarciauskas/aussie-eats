@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/db";
+import { listAdminOrders } from "@/lib/backend";
 import { ensureAdmin } from "@/lib/admin-guard";
 import { formatAUD } from "@/lib/money";
 import { paymentStatusLabel } from "@/lib/payment";
@@ -8,10 +8,7 @@ import { AdminOrderStatus } from "@/components/admin-order-status";
 export default async function AdminOrdersPage() {
   await ensureAdmin();
 
-  const orders = await prisma.order.findMany({
-    include: { restaurant: true, user: true, items: true },
-    orderBy: { createdAt: "desc" },
-  });
+  const orders = await listAdminOrders();
 
   return (
     <div>
@@ -42,8 +39,8 @@ export default async function AdminOrdersPage() {
                     timeStyle: "short",
                   }).format(order.createdAt)}
                 </td>
-                <td>{order.user.email}</td>
-                <td>{order.restaurant.name}</td>
+                <td>{order.user?.email ?? "—"}</td>
+                <td>{order.restaurant?.name ?? "—"}</td>
                 <td>
                   {order.items.map((i) => `${i.quantity}× ${i.name}`).join(", ")}
                 </td>

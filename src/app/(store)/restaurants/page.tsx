@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { listFavouriteRestaurantIds } from "@/app/actions/favourites";
-import { prisma } from "@/lib/db";
+import { listDietaryCatalog, listRestaurants } from "@/lib/backend";
 import { RestaurantFilters } from "@/components/restaurant-filters";
 import { RestaurantsExplorer, type ExplorerRestaurant } from "@/components/restaurants-explorer";
 import { distanceKm, parseCuisineTags, parseOrigin } from "@/lib/restaurants";
@@ -41,21 +41,12 @@ async function venueIdsMatchingDiets(
 ): Promise<Set<string> | null> {
   if (diets.length === 0) return null;
 
-  const venues = await prisma.restaurant.findMany({
-    where: { isActive: true },
-    select: {
-      id: true,
-      categories: { select: { items: { select: { dietaryTags: true } } } },
-    },
-  });
+  const venues = await listDietaryCatalog({ activeOnly: true });
 
   return new Set(
     venues
       .filter((venue) =>
-        restaurantMatchesDiets(
-          { menuItems: venue.categories.flatMap((category) => category.items) },
-          diets,
-        ),
+        restaurantMatchesDiets({ menuItems: venue.menuItems }, diets),
       )
       .map((venue) => venue.id),
   );
@@ -82,10 +73,7 @@ export default async function RestaurantsPage({ searchParams }: Props) {
   const etaOrigin = origin ?? (cityPin ? { lat: cityPin.lat, lng: cityPin.lng } : null);
 
   const [restaurants, favouriteIds, dietMatchedIds] = await Promise.all([
-    prisma.restaurant.findMany({
-      where: { isActive: true },
-      orderBy: [{ city: "asc" }, { rating: "desc" }, { name: "asc" }],
-    }),
+    listRestaurants({ activeOnly: true }),
     listFavouriteRestaurantIds(),
     venueIdsMatchingDiets(activeDiets),
   ]);

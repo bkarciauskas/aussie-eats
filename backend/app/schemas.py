@@ -96,6 +96,20 @@ class RestaurantDetail(RestaurantSummary):
     reviews: list[ReviewOut] = Field(default_factory=list)
 
 
+class DietaryCatalogItem(ApiModel):
+    """Lean menu fields needed for browse diet matching."""
+
+    dietary_tags: str = Field(default="[]", alias="dietaryTags")
+    allergens: str = "[]"
+
+
+class DietaryCatalogVenue(ApiModel):
+    id: str
+    menu_items: list[DietaryCatalogItem] = Field(
+        default_factory=list, alias="menuItems"
+    )
+
+
 class DeliveryAddressIn(ApiModel):
     label: str = "Delivery"
     line1: str

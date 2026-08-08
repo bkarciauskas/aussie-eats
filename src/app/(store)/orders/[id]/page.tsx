@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { prisma } from "@/lib/db";
+import { getMyOrder } from "@/lib/backend";
 import { formatAUD } from "@/lib/money";
 import { ORDER_STATUS_LABELS, parseDeliveryAddress } from "@/lib/orders";
 import { paymentStatusLabel } from "@/lib/payment";
@@ -19,15 +19,13 @@ export default async function OrderDetailPage({ params }: Props) {
   }
 
   const { id } = await params;
-  const order = await prisma.order.findFirst({
-    where: { id, userId: session.userId },
-    include: { restaurant: true, items: true, review: true },
-  });
+  const order = await getMyOrder(id);
 
   if (!order) notFound();
 
   const address = parseDeliveryAddress(order.deliveryAddress);
   const canReview = order.status === OrderStatus.delivered && !order.review;
+  const restaurantName = order.restaurant?.name ?? "Restaurant";
 
   return (
     <div className="page-shell max-w-3xl">
@@ -36,7 +34,7 @@ export default async function OrderDetailPage({ params }: Props) {
       </Link>
       <div className="mt-4 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="font-display text-4xl text-[var(--ae-green)]">{order.restaurant.name}</h1>
+          <h1 className="font-display text-4xl text-[var(--ae-green)]">{restaurantName}</h1>
           <p className="mt-2 text-sm text-[var(--ae-ink-muted)]">
             Placed{" "}
             {new Intl.DateTimeFormat("en-AU", {

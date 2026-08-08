@@ -1,19 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { prisma } from "@/lib/db";
-import {
-  canTransition,
-  parseOrderLineQuantity,
-  parseStatusHistory,
-} from "@/lib/orders";
+import { ApiError, placeOrder, updateOrderStatus } from "@/lib/backend";
 import {
   CardBrand,
   PaymentMethodId,
   formatCardPaymentLabel,
   isCardBrand,
   parsePaymentMethod,
-  paymentMethodLabel,
 } from "@/lib/payment";
 import { OrderStatus, isOrderStatus } from "@/lib/roles";
 import { requireAdmin, requireUser } from "@/lib/session";
@@ -36,6 +30,13 @@ export type PlaceOrderInput = {
   payment: PlaceOrderPayment;
 };
 
+function actionError(err: unknown, fallback: string): string {
+  if (err instanceof ApiError) {
+    return err.detail || fallback;
+  }
+  return fallback;
+}
+
 export async function placeOrderAction(input: PlaceOrderInput) {
   const session = await requireUser();
   if (!session?.userId) {
@@ -51,7 +52,7 @@ export async function placeOrderAction(input: PlaceOrderInput) {
     return { error: "Please choose a valid payment method." };
   }
 
-  let paymentMethod = paymentMethodLabel(paymentMethodId);
+  let payment: Record<string, string> = { method: paymentMethodId };
   if (paymentMethodId === "card") {
     if (input.payment.method !== "card") {
       return { error: "Please complete the card details." };
@@ -67,59 +68,10 @@ export async function placeOrderAction(input: PlaceOrderInput) {
     if (!cardLabel) {
       return { error: "Please complete the card details." };
     }
-    paymentMethod = cardLabel;
-  }
-
-  const restaurant = await prisma.restaurant.findFirst({
-    where: { id: input.restaurantId, isActive: true },
-  });
-  if (!restaurant || !restaurant.isOpen) {
-    return { error: "This restaurant is not available right now." };
-  }
-
-  const menuItemIds = input.items.map((i) => i.menuItemId);
-  const menuItems = await prisma.menuItem.findMany({
-    where: {
-      id: { in: menuItemIds },
-      isAvailable: true,
-      category: { restaurantId: restaurant.id },
-    },
-  });
-
-  if (menuItems.length !== new Set(menuItemIds).size) {
-    return { error: "Some items are unavailable. Please refresh the menu." };
-  }
-
-  const byId = new Map(menuItems.map((m) => [m.id, m]));
-  let subtotalCents = 0;
-  const orderItems: {
-    menuItemId: string;
-    name: string;
-    unitPriceCents: number;
-    quantity: number;
-  }[] = [];
-
-  for (const line of input.items) {
-    const quantity = parseOrderLineQuantity(line.quantity);
-    if (quantity == null) {
-      return { error: "Invalid quantity in cart. Please refresh and try again." };
-    }
-    const item = byId.get(line.menuItemId);
-    if (!item) {
-      return { error: "Some items are unavailable. Please refresh the menu." };
-    }
-    subtotalCents += item.priceCents * quantity;
-    orderItems.push({
-      menuItemId: item.id,
-      name: item.name,
-      unitPriceCents: item.priceCents,
-      quantity,
-    });
-  }
-
-  if (subtotalCents < restaurant.minOrderCents) {
-    return {
-      error: `Minimum order is ${(restaurant.minOrderCents / 100).toFixed(2)} AUD before delivery.`,
+    payment = {
+      method: "card",
+      cardLast4,
+      cardBrand: input.payment.cardBrand,
     };
   }
 
@@ -128,38 +80,35 @@ export async function placeOrderAction(input: PlaceOrderInput) {
     return { error: "Please complete the delivery address." };
   }
 
-  const deliveryFeeCents = restaurant.deliveryFeeCents;
-  const totalCents = subtotalCents + deliveryFeeCents;
-
-  const now = new Date();
-  const order = await prisma.order.create({
-    data: {
-      userId: session.userId,
-      restaurantId: restaurant.id,
-      status: OrderStatus.pending,
-      statusHistoryJson: JSON.stringify([
-        { status: OrderStatus.pending, at: now.toISOString() },
-      ]),
-      subtotalCents,
-      deliveryFeeCents,
-      totalCents,
-      deliveryAddress: JSON.stringify({
+  try {
+    // Backend recomputes line prices from Mongo and enforces min-order.
+    const order = await placeOrder({
+      restaurantId: input.restaurantId,
+      items: input.items.map((item) => ({
+        menuItemId: item.menuItemId,
+        quantity: item.quantity,
+      })),
+      address: {
         label: label || "Delivery",
         line1: line1.trim(),
         suburb: suburb.trim(),
         state: state || "NSW",
         postcode: postcode.trim(),
         phone: phone?.trim() || undefined,
-      }),
-      paymentMethod,
-      items: { create: orderItems },
-    },
-  });
+      },
+      payment,
+    });
 
-  revalidatePath("/orders");
-  revalidatePath("/admin");
-  revalidatePath("/admin/orders");
-  return { orderId: order.id };
+    revalidatePath("/orders");
+    revalidatePath("/admin");
+    revalidatePath("/admin/orders");
+    return { orderId: order.orderId };
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 401) {
+      return { error: "Please log in to place an order.", needsAuth: true as const };
+    }
+    return { error: actionError(err, "Unable to place order. Please try again.") };
+  }
 }
 
 export async function updateOrderStatusAction(orderId: string, status: OrderStatus) {
@@ -172,25 +121,13 @@ export async function updateOrderStatusAction(orderId: string, status: OrderStat
     return { error: "Invalid status." };
   }
 
-  const order = await prisma.order.findUnique({ where: { id: orderId } });
-  if (!order) {
-    return { error: "Order not found." };
+  try {
+    await updateOrderStatus(orderId, status);
+    revalidatePath("/admin");
+    revalidatePath("/admin/orders");
+    revalidatePath(`/orders/${orderId}`);
+    return { ok: true as const };
+  } catch (err) {
+    return { error: actionError(err, "Unable to update order status.") };
   }
-
-  if (!isOrderStatus(order.status) || !canTransition(order.status, status)) {
-    return { error: `Cannot change status from ${order.status} to ${status}.` };
-  }
-
-  const history = [...parseStatusHistory(order.statusHistoryJson)];
-  history.push({ status, at: new Date().toISOString() });
-
-  await prisma.order.update({
-    where: { id: orderId },
-    data: { status, statusHistoryJson: JSON.stringify(history) },
-  });
-
-  revalidatePath("/admin");
-  revalidatePath("/admin/orders");
-  revalidatePath(`/orders/${orderId}`);
-  return { ok: true as const };
 }

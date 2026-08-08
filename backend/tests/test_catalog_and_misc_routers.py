@@ -17,6 +17,21 @@ def test_restaurants_list_and_detail(client, seed_catalog):
     assert len(body["categories"][0]["items"]) == 2
 
 
+def test_dietary_catalog_returns_lean_menu_tags(client, seed_catalog):
+    response = client.get("/restaurants/dietary-catalog")
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body) == 1
+    assert body[0]["id"] == "rest_1"
+    assert body[0]["menuItems"] == [
+        {"dietaryTags": "[]", "allergens": "[]"},
+        {"dietaryTags": '["vegetarian"]', "allergens": "[]"},
+    ]
+    # Must not collide with /restaurants/{slug}
+    assert "categories" not in body[0]
+    assert "reviews" not in body[0]
+
+
 def test_favourites_toggle_and_list(client, seed_catalog, customer_headers):
     empty = client.get("/favourites", headers=customer_headers)
     assert empty.status_code == 200
@@ -125,6 +140,7 @@ def test_openapi_lists_domain_routes(client):
         "/auth/logout",
         "/auth/me",
         "/restaurants",
+        "/restaurants/dietary-catalog",
         "/restaurants/{slug}",
         "/orders",
         "/orders/{order_id}",
