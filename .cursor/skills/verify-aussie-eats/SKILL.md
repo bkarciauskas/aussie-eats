@@ -60,7 +60,9 @@ Stable handles (prefer these):
 | Customer login | `/login` → `input[name="email"]`, `input[name="password"]`, button `Sign in` |
 | Admin login | `/admin/login` → same fields; demo `admin@aussieeats.local` / `admin1234` |
 | Add to cart | restaurant menu → button text `Add` |
-| Checkout | `/cart` → Checkout → `/checkout` → `Place order` |
+| Checkout | `/cart` → Checkout → `/checkout` → card fields → `Pay & place order` |
+| Admin order status | `/admin/orders` → `→ Preparing` (etc.) on pending rows |
+| Admin menu edit | `/admin/restaurants` → Menu → Edit → Save |
 
 Feature recipes live in `features/`. Pick the file that matches the change; do not invent a shorter path that skips user-visible steps listed there.
 

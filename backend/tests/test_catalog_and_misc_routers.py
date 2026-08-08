@@ -90,6 +90,40 @@ def test_review_submit_on_delivered_order(
     assert fake_db.restaurants.docs[0]["userRatingCount"] == 1
 
 
+def test_review_rejects_non_delivered_order(
+    client,
+    seed_catalog,
+    customer_user,
+    customer_headers,
+    fake_db,
+):
+    now = datetime.now(timezone.utc)
+    fake_db.orders.docs.append(
+        {
+            "id": "order_open",
+            "userId": customer_user["id"],
+            "restaurantId": "rest_1",
+            "status": "preparing",
+            "statusHistoryJson": initial_status_history(now),
+            "subtotalCents": 2000,
+            "deliveryFeeCents": 499,
+            "totalCents": 2499,
+            "deliveryAddress": "{}",
+            "paymentMethod": "Pay on delivery",
+            "createdAt": now,
+            "updatedAt": now,
+        }
+    )
+
+    response = client.post(
+        "/reviews",
+        headers=customer_headers,
+        json={"orderId": "order_open", "rating": 4, "comment": "Too early"},
+    )
+    assert response.status_code == 400
+    assert "delivered" in response.json()["detail"].lower()
+
+
 def test_admin_menu_crud(client, seed_catalog, admin_headers, fake_db):
     created = client.post(
         "/admin/menu-items",

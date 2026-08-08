@@ -28,8 +28,8 @@ Manual equivalent:
 ## Proof
 
 - Cart cleared after place
-- `/orders` lists the new order
-- Order detail shows status pending / `Card · Visa ending 4242` / `Paid (demo)`
+- Lands on `/orders/:id` with status pending (`[data-status="pending"]`)
+- Order detail shows `Card · Visa ending 4242` / `Paid (demo)`
 - **Side effect:** order exists in Mongo via FastAPI (visible under `/orders` or admin Orders)
 
 Mutates shared demo Mongo — prefer a dedicated `MONGODB_URI` / `MONGODB_DB` when parallelism matters.
