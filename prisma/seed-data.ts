@@ -1,8 +1,12 @@
+import type { AllergenId, DietId } from "../src/lib/dietary";
+
 export type MenuSeed = {
   name: string;
   description: string;
   priceCents: number;
   image?: string;
+  dietaryTags?: DietId[];
+  allergens?: AllergenId[];
 };
 
 export type CategorySeed = {
@@ -56,14 +60,24 @@ export const restaurants: RestaurantSeed[] = [
           { name: "Classic Smash", description: "Double beef, American cheddar, pickles, soft bun.", priceCents: 1890, image: "/images/food/burger.jpg" },
           { name: "Bacon BBQ", description: "Crispy bacon, smoky BBQ, onion jam.", priceCents: 2190, image: "/images/food/burger.jpg" },
           { name: "Mushroom Swiss", description: "Swiss cheese, garlic mushrooms, aioli.", priceCents: 2090 },
-          { name: "Veggie Patty", description: "Plant-based patty, lettuce, tomato, vegan mayo.", priceCents: 1990 },
+          {
+            name: "Veggie Patty",
+            description: "Plant-based patty, lettuce, tomato, vegan mayo.",
+            priceCents: 1990,
+            dietaryTags: ["vegan", "vegetarian", "nut-free"],
+          },
         ],
       },
       {
         name: "Sides",
         items: [
-          { name: "Thick-cut chips", description: "Sea salt and house tomato sauce.", priceCents: 650 },
-          { name: "Onion rings", description: "Beer-battered, crispy.", priceCents: 750 },
+          {
+            name: "Thick-cut chips",
+            description: "Sea salt and house tomato sauce.",
+            priceCents: 650,
+            dietaryTags: ["vegan", "vegetarian", "gluten-free", "nut-free"],
+          },
+          { name: "Onion rings", description: "Beer-battered, crispy.", priceCents: 750, dietaryTags: ["vegetarian", "nut-free"] },
           { name: "Loaded fries", description: "Cheese sauce, bacon bits, spring onion.", priceCents: 1100 },
         ],
       },
@@ -94,25 +108,57 @@ export const restaurants: RestaurantSeed[] = [
       {
         name: "Starters",
         items: [
-          { name: "Chicken satay", description: "Grilled skewers with peanut sauce.", priceCents: 1400 },
-          { name: "Spring rolls", description: "Crispy veg rolls, sweet chilli.", priceCents: 1100 },
-          { name: "Tom yum soup", description: "Hot and sour prawn soup.", priceCents: 1500 },
+          {
+            name: "Chicken satay",
+            description: "Grilled skewers with peanut sauce.",
+            priceCents: 1400,
+            allergens: ["peanuts"],
+          },
+          {
+            name: "Spring rolls",
+            description: "Crispy veg rolls, sweet chilli.",
+            priceCents: 1100,
+            dietaryTags: ["vegan", "vegetarian", "nut-free"],
+          },
+          { name: "Tom yum soup", description: "Hot and sour prawn soup.", priceCents: 1500, dietaryTags: ["gluten-free", "nut-free"] },
         ],
       },
       {
         name: "Mains",
         items: [
-          { name: "Pad Thai", description: "Rice noodles, tofu, egg, crushed peanuts.", priceCents: 1890, image: "/images/food/thai.jpg" },
-          { name: "Green curry", description: "Chicken, eggplant, Thai basil, jasmine rice.", priceCents: 2190, image: "/images/food/thai.jpg" },
+          {
+            name: "Pad Thai",
+            description: "Rice noodles, tofu, egg, crushed peanuts.",
+            priceCents: 1890,
+            image: "/images/food/thai.jpg",
+            allergens: ["peanuts"],
+          },
+          {
+            name: "Green curry",
+            description: "Chicken, eggplant, Thai basil, jasmine rice.",
+            priceCents: 2190,
+            image: "/images/food/thai.jpg",
+            dietaryTags: ["gluten-free", "nut-free"],
+          },
           { name: "Basil stir-fry", description: "Minced pork, chilli, holy basil.", priceCents: 1990 },
-          { name: "Massaman beef", description: "Slow-cooked beef, potato, peanut.", priceCents: 2490 },
+          {
+            name: "Massaman beef",
+            description: "Slow-cooked beef, potato, peanut.",
+            priceCents: 2490,
+            allergens: ["peanuts"],
+          },
         ],
       },
       {
         name: "Rice & noodles",
         items: [
-          { name: "Jasmine rice", description: "Steamed.", priceCents: 350 },
-          { name: "Garlic noodles", description: "Wok-tossed egg noodles.", priceCents: 1200 },
+          {
+            name: "Jasmine rice",
+            description: "Steamed.",
+            priceCents: 350,
+            dietaryTags: ["vegan", "vegetarian", "gluten-free", "halal", "nut-free"],
+          },
+          { name: "Garlic noodles", description: "Wok-tossed egg noodles.", priceCents: 1200, dietaryTags: ["vegetarian", "nut-free"] },
         ],
       },
     ]),

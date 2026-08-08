@@ -6,6 +6,14 @@ import {
   upsertCategoryAction,
   upsertMenuItemAction,
 } from "@/app/actions/admin-restaurants";
+import {
+  ALLERGEN_LABELS,
+  DIET_FILTERS,
+  parseAllergens,
+  parseDietaryTags,
+  type AllergenId,
+  type DietId,
+} from "@/lib/dietary";
 import { formatAUD } from "@/lib/money";
 
 type Item = {
@@ -16,6 +24,8 @@ type Item = {
   image: string | null;
   isAvailable: boolean;
   categoryId: string;
+  dietaryTags: string;
+  allergens: string;
 };
 
 type Category = {
@@ -24,6 +34,45 @@ type Category = {
   sortOrder: number;
   items: Item[];
 };
+
+function DietAllergenFields({
+  dietaryTags = [],
+  allergens = [],
+}: {
+  dietaryTags?: DietId[];
+  allergens?: AllergenId[];
+}) {
+  return (
+    <div className="space-y-2 sm:col-span-2">
+      <p className="text-sm text-[var(--ae-ink-muted)]">Dietary tags</p>
+      <div className="flex flex-wrap gap-3 text-sm">
+        {DIET_FILTERS.map((filter) => (
+          <label key={filter.id} className="inline-flex items-center gap-1.5">
+            <input
+              type="checkbox"
+              name={`diet-${filter.id}`}
+              defaultChecked={dietaryTags.includes(filter.id)}
+            />
+            {filter.label}
+          </label>
+        ))}
+      </div>
+      <p className="text-sm text-[var(--ae-ink-muted)]">Allergens</p>
+      <div className="flex flex-wrap gap-3 text-sm">
+        {(Object.keys(ALLERGEN_LABELS) as AllergenId[]).map((id) => (
+          <label key={id} className="inline-flex items-center gap-1.5">
+            <input
+              type="checkbox"
+              name={`allergen-${id}`}
+              defaultChecked={allergens.includes(id)}
+            />
+            {ALLERGEN_LABELS[id]}
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export function AdminMenuManager({
   restaurantId,
@@ -71,44 +120,53 @@ export function AdminMenuManager({
         <section key={category.id} className="panel">
           <h2 className="font-display text-xl">{category.name}</h2>
           <ul className="mt-4 divide-y divide-[var(--ae-line)]">
-            {category.items.map((item) => (
-              <li key={item.id} className="flex flex-wrap items-start justify-between gap-3 py-3">
-                <div>
-                  <p className="font-medium">
-                    {item.name}{" "}
-                    <span className="text-sm font-normal text-[var(--ae-ink-muted)]">
-                      {formatAUD(item.priceCents)}
-                    </span>
-                  </p>
-                  <p className="text-sm text-[var(--ae-ink-muted)]">{item.description}</p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    className="text-sm underline"
-                    onClick={() => setEditingItem(item)}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    className="text-sm underline"
-                    disabled={pending}
-                    onClick={() => {
-                      startTransition(async () => {
-                        await toggleMenuItemAvailabilityAction(
-                          restaurantId,
-                          item.id,
-                          !item.isAvailable,
-                        );
-                      });
-                    }}
-                  >
-                    {item.isAvailable ? "Mark unavailable" : "Mark available"}
-                  </button>
-                </div>
-              </li>
-            ))}
+            {category.items.map((item) => {
+              const diets = parseDietaryTags(item.dietaryTags);
+              const allergens = parseAllergens(item.allergens);
+              return (
+                <li key={item.id} className="flex flex-wrap items-start justify-between gap-3 py-3">
+                  <div>
+                    <p className="font-medium">
+                      {item.name}{" "}
+                      <span className="text-sm font-normal text-[var(--ae-ink-muted)]">
+                        {formatAUD(item.priceCents)}
+                      </span>
+                    </p>
+                    <p className="text-sm text-[var(--ae-ink-muted)]">{item.description}</p>
+                    {(diets.length > 0 || allergens.length > 0) && (
+                      <p className="mt-1 text-xs text-[var(--ae-ink-soft)]">
+                        {[...diets, ...allergens].join(" · ")}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      className="text-sm underline"
+                      onClick={() => setEditingItem(item)}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      className="text-sm underline"
+                      disabled={pending}
+                      onClick={() => {
+                        startTransition(async () => {
+                          await toggleMenuItemAvailabilityAction(
+                            restaurantId,
+                            item.id,
+                            !item.isAvailable,
+                          );
+                        });
+                      }}
+                    >
+                      {item.isAvailable ? "Mark unavailable" : "Mark available"}
+                    </button>
+                  </div>
+                </li>
+              );
+            })}
           </ul>
 
           <form
@@ -139,6 +197,7 @@ export function AdminMenuManager({
               <span>Price (AUD)</span>
               <input name="price" type="number" step="0.01" min="0" required defaultValue="12.00" />
             </label>
+            <DietAllergenFields />
             <div className="flex items-end">
               <button type="submit" className="btn-secondary" disabled={pending}>
                 Add item
@@ -189,6 +248,10 @@ export function AdminMenuManager({
                 defaultValue={(editingItem.priceCents / 100).toFixed(2)}
               />
             </label>
+            <DietAllergenFields
+              dietaryTags={parseDietaryTags(editingItem.dietaryTags)}
+              allergens={parseAllergens(editingItem.allergens)}
+            />
             <label className="inline-flex items-center gap-2 text-sm">
               <input
                 type="checkbox"

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   buildRestaurantSearchParams,
+  buildSuggestionPath,
   restaurantMatchesQuery,
 } from "./restaurant-query";
 
@@ -72,5 +73,49 @@ describe("buildRestaurantSearchParams", () => {
     });
     assert.equal(params.get("city"), null);
     assert.equal(params.get("q"), "Bondi Slice House");
+  });
+
+  it("preserves diet and allergy filters", () => {
+    const params = buildRestaurantSearchParams({
+      rawQ: "",
+      locationCity: "Sydney",
+      diet: "vegan",
+      allergy: "nuts",
+    });
+    assert.equal(params.get("diet"), "vegan,nut-free");
+    assert.equal(params.get("allergy"), "nuts");
+  });
+});
+
+describe("buildSuggestionPath", () => {
+  it("carries diet and allergy onto a restaurant menu", () => {
+    assert.equal(
+      buildSuggestionPath({
+        path: "/restaurants/bondi-slice-house",
+        diet: "vegan",
+        allergy: "nuts",
+      }),
+      "/restaurants/bondi-slice-house?diet=vegan%2Cnut-free&allergy=nuts",
+    );
+  });
+
+  it("keeps destination params alongside the diet filter", () => {
+    const path = buildSuggestionPath({
+      path: "/restaurants",
+      params: { cuisine: "Thai", lat: "-33.8688", lng: "151.2093" },
+      diet: "halal",
+    });
+    const params = new URLSearchParams(path.split("?")[1]);
+    assert.equal(params.get("cuisine"), "Thai");
+    assert.equal(params.get("lat"), "-33.8688");
+    assert.equal(params.get("diet"), "halal");
+    assert.equal(params.get("allergy"), null);
+  });
+
+  it("returns a bare path when nothing is active", () => {
+    assert.equal(
+      buildSuggestionPath({ path: "/restaurants/bondi-slice-house" }),
+      "/restaurants/bondi-slice-house",
+    );
   });
 });

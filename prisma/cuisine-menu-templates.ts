@@ -1,8 +1,14 @@
+import type { AllergenId, DietId } from "../src/lib/dietary";
+import { tagMenuCategories } from "./tag-menu-item";
+
 export type MenuSeed = {
   name: string;
   description: string;
   priceCents: number;
   image?: string;
+  /** Explicit demo tags; merged with cuisine-templated heuristics at import/seed. */
+  dietaryTags?: DietId[];
+  allergens?: AllergenId[];
 };
 
 export type CategorySeed = {
@@ -31,14 +37,24 @@ const TEMPLATES: Record<string, CategorySeed[]> = {
         { name: "Classic Smash", description: "Double beef, cheddar, pickles, soft bun.", priceCents: 1890, image: "/images/food/burger.jpg" },
         { name: "Bacon BBQ", description: "Crispy bacon, smoky BBQ, onion jam.", priceCents: 2190, image: "/images/food/burger.jpg" },
         { name: "Mushroom Swiss", description: "Swiss cheese, garlic mushrooms, aioli.", priceCents: 2090 },
-        { name: "Veggie Patty", description: "Plant-based patty, lettuce, tomato, vegan mayo.", priceCents: 1990 },
+        {
+          name: "Veggie Patty",
+          description: "Plant-based patty, lettuce, tomato, vegan mayo.",
+          priceCents: 1990,
+          dietaryTags: ["vegan", "vegetarian", "nut-free"],
+        },
       ],
     },
     {
       name: "Sides",
       items: [
-        { name: "Thick-cut chips", description: "Sea salt and house tomato sauce.", priceCents: 650 },
-        { name: "Onion rings", description: "Beer-battered, crispy.", priceCents: 750 },
+        {
+          name: "Thick-cut chips",
+          description: "Sea salt and house tomato sauce.",
+          priceCents: 650,
+          dietaryTags: ["vegan", "vegetarian", "gluten-free", "nut-free"],
+        },
+        { name: "Onion rings", description: "Beer-battered, crispy.", priceCents: 750, dietaryTags: ["vegetarian", "nut-free"] },
         { name: "Loaded fries", description: "Cheese sauce, bacon bits, spring onion.", priceCents: 1100 },
       ],
     },
@@ -48,18 +64,45 @@ const TEMPLATES: Record<string, CategorySeed[]> = {
     {
       name: "Starters",
       items: [
-        { name: "Chicken satay", description: "Grilled skewers with peanut sauce.", priceCents: 1400 },
-        { name: "Spring rolls", description: "Crispy veg rolls, sweet chilli.", priceCents: 1100 },
-        { name: "Tom yum soup", description: "Hot and sour prawn soup.", priceCents: 1500 },
+        {
+          name: "Chicken satay",
+          description: "Grilled skewers with peanut sauce.",
+          priceCents: 1400,
+          allergens: ["peanuts"],
+        },
+        {
+          name: "Spring rolls",
+          description: "Crispy veg rolls, sweet chilli.",
+          priceCents: 1100,
+          dietaryTags: ["vegan", "vegetarian", "nut-free"],
+        },
+        { name: "Tom yum soup", description: "Hot and sour prawn soup.", priceCents: 1500, dietaryTags: ["gluten-free", "nut-free"] },
       ],
     },
     {
       name: "Mains",
       items: [
-        { name: "Pad Thai", description: "Rice noodles, tofu, egg, crushed peanuts.", priceCents: 1890, image: "/images/food/thai.jpg" },
-        { name: "Green curry", description: "Chicken, eggplant, Thai basil, jasmine rice.", priceCents: 2190, image: "/images/food/thai.jpg" },
+        {
+          name: "Pad Thai",
+          description: "Rice noodles, tofu, egg, crushed peanuts.",
+          priceCents: 1890,
+          image: "/images/food/thai.jpg",
+          allergens: ["peanuts"],
+        },
+        {
+          name: "Green curry",
+          description: "Chicken, eggplant, Thai basil, jasmine rice.",
+          priceCents: 2190,
+          image: "/images/food/thai.jpg",
+          dietaryTags: ["gluten-free", "nut-free"],
+        },
         { name: "Basil stir-fry", description: "Minced pork, chilli, holy basil.", priceCents: 1990 },
-        { name: "Massaman beef", description: "Slow-cooked beef, potato, peanut.", priceCents: 2490 },
+        {
+          name: "Massaman beef",
+          description: "Slow-cooked beef, potato, peanut.",
+          priceCents: 2490,
+          allergens: ["peanuts"],
+        },
       ],
     },
     drinks,
@@ -68,17 +111,28 @@ const TEMPLATES: Record<string, CategorySeed[]> = {
     {
       name: "Pizzas",
       items: [
-        { name: "Margherita", description: "San Marzano tomato, mozzarella, basil.", priceCents: 1890, image: "/images/food/pizza.jpg" },
-        { name: "Pepperoni", description: "Spicy salami, mozzarella.", priceCents: 2190, image: "/images/food/pizza.jpg" },
-        { name: "Hawaiian", description: "Ham, pineapple, mozzarella.", priceCents: 2090 },
-        { name: "BBQ Chicken", description: "Smoky BBQ base, red onion, mozzarella.", priceCents: 2290 },
+        {
+          name: "Margherita",
+          description: "San Marzano tomato, mozzarella, basil.",
+          priceCents: 1890,
+          image: "/images/food/pizza.jpg",
+          dietaryTags: ["vegetarian", "nut-free"],
+        },
+        { name: "Pepperoni", description: "Spicy salami, mozzarella.", priceCents: 2190, image: "/images/food/pizza.jpg", dietaryTags: ["nut-free"] },
+        { name: "Hawaiian", description: "Ham, pineapple, mozzarella.", priceCents: 2090, dietaryTags: ["nut-free"] },
+        { name: "BBQ Chicken", description: "Smoky BBQ base, red onion, mozzarella.", priceCents: 2290, dietaryTags: ["nut-free"] },
       ],
     },
     {
       name: "Sides",
       items: [
-        { name: "Garlic bread", description: "Toasted with herb butter.", priceCents: 750 },
-        { name: "Garden salad", description: "Leafy greens, vinaigrette.", priceCents: 900 },
+        { name: "Garlic bread", description: "Toasted with herb butter.", priceCents: 750, dietaryTags: ["vegetarian", "nut-free"] },
+        {
+          name: "Garden salad",
+          description: "Leafy greens, vinaigrette.",
+          priceCents: 900,
+          dietaryTags: ["vegan", "vegetarian", "gluten-free", "nut-free"],
+        },
       ],
     },
     drinks,
@@ -88,15 +142,25 @@ const TEMPLATES: Record<string, CategorySeed[]> = {
       name: "Pasta",
       items: [
         { name: "Spaghetti bolognese", description: "Slow beef ragu, parmesan.", priceCents: 2190 },
-        { name: "Penne arrabbiata", description: "Chilli tomato, garlic, parsley.", priceCents: 1990 },
+        {
+          name: "Penne arrabbiata",
+          description: "Chilli tomato, garlic, parsley.",
+          priceCents: 1990,
+          dietaryTags: ["vegan", "vegetarian", "nut-free"],
+        },
         { name: "Fettuccine carbonara", description: "Egg, pecorino, pancetta.", priceCents: 2290 },
       ],
     },
     {
       name: "Mains",
       items: [
-        { name: "Chicken parmigiana", description: "Napoli, mozzarella, chips.", priceCents: 2690 },
-        { name: "Risotto funghi", description: "Mushroom, thyme, parmesan.", priceCents: 2390 },
+        { name: "Chicken parmigiana", description: "Napoli, mozzarella, chips.", priceCents: 2690, dietaryTags: ["nut-free"] },
+        {
+          name: "Risotto funghi",
+          description: "Mushroom, thyme, parmesan.",
+          priceCents: 2390,
+          dietaryTags: ["vegetarian", "gluten-free", "nut-free"],
+        },
       ],
     },
     drinks,
@@ -105,10 +169,22 @@ const TEMPLATES: Record<string, CategorySeed[]> = {
     {
       name: "Brunch",
       items: [
-        { name: "Avocado toast", description: "Sourdough, lemon, chilli flakes.", priceCents: 1690, image: "/images/food/cafe.jpg" },
+        {
+          name: "Avocado toast",
+          description: "Sourdough, lemon, chilli flakes.",
+          priceCents: 1690,
+          image: "/images/food/cafe.jpg",
+          dietaryTags: ["vegan", "vegetarian", "nut-free"],
+        },
         { name: "Eggs benedict", description: "Ham, hollandaise, English muffin.", priceCents: 1890 },
         { name: "Big breakfast", description: "Eggs, bacon, sausage, hash brown, toast.", priceCents: 2290 },
-        { name: "Granola bowl", description: "Yoghurt, seasonal fruit, honey.", priceCents: 1490 },
+        {
+          name: "Granola bowl",
+          description: "Yoghurt, seasonal fruit, honey.",
+          priceCents: 1490,
+          dietaryTags: ["vegetarian"],
+          allergens: ["tree-nuts"],
+        },
       ],
     },
     {
@@ -124,17 +200,34 @@ const TEMPLATES: Record<string, CategorySeed[]> = {
     {
       name: "Rolls",
       items: [
-        { name: "Salmon avocado roll", description: "8 pieces.", priceCents: 1600, image: "/images/food/sushi.jpg" },
-        { name: "California roll", description: "Crab stick, avocado, mayo.", priceCents: 1400 },
-        { name: "Spicy tuna roll", description: "Tuna, chilli mayo, cucumber.", priceCents: 1700 },
+        {
+          name: "Salmon avocado roll",
+          description: "8 pieces.",
+          priceCents: 1600,
+          image: "/images/food/sushi.jpg",
+          dietaryTags: ["gluten-free", "nut-free"],
+        },
+        { name: "California roll", description: "Crab stick, avocado, mayo.", priceCents: 1400, dietaryTags: ["nut-free"] },
+        { name: "Spicy tuna roll", description: "Tuna, chilli mayo, cucumber.", priceCents: 1700, dietaryTags: ["nut-free"] },
       ],
     },
     {
       name: "Nigiri & bowls",
       items: [
-        { name: "Salmon nigiri", description: "2 pieces.", priceCents: 900, image: "/images/food/sushi.jpg" },
-        { name: "Teriyaki chicken bowl", description: "Rice, salad, sesame.", priceCents: 1890 },
-        { name: "Miso soup", description: "Tofu, wakame.", priceCents: 450 },
+        {
+          name: "Salmon nigiri",
+          description: "2 pieces.",
+          priceCents: 900,
+          image: "/images/food/sushi.jpg",
+          dietaryTags: ["gluten-free", "nut-free"],
+        },
+        { name: "Teriyaki chicken bowl", description: "Rice, salad, sesame.", priceCents: 1890, dietaryTags: ["nut-free"] },
+        {
+          name: "Miso soup",
+          description: "Tofu, wakame.",
+          priceCents: 450,
+          dietaryTags: ["vegan", "vegetarian", "gluten-free", "nut-free"],
+        },
       ],
     },
     drinks,
@@ -144,15 +237,25 @@ const TEMPLATES: Record<string, CategorySeed[]> = {
       name: "Favourites",
       items: [
         { name: "Chicken katsu", description: "Crumbed chicken, tonkatsu sauce, rice.", priceCents: 2190 },
-        { name: "Beef teriyaki", description: "Grilled beef, sticky glaze, rice.", priceCents: 2390 },
+        { name: "Beef teriyaki", description: "Grilled beef, sticky glaze, rice.", priceCents: 2390, dietaryTags: ["nut-free"] },
         { name: "Gyoza", description: "Pan-fried dumplings, 6 pcs.", priceCents: 1200 },
       ],
     },
     {
       name: "Sides",
       items: [
-        { name: "Edamame", description: "Sea salt.", priceCents: 700 },
-        { name: "Seaweed salad", description: "Sesame dressing.", priceCents: 850 },
+        {
+          name: "Edamame",
+          description: "Sea salt.",
+          priceCents: 700,
+          dietaryTags: ["vegan", "vegetarian", "gluten-free", "nut-free"],
+        },
+        {
+          name: "Seaweed salad",
+          description: "Sesame dressing.",
+          priceCents: 850,
+          dietaryTags: ["vegan", "vegetarian", "gluten-free", "nut-free"],
+        },
       ],
     },
     drinks,
@@ -161,24 +264,60 @@ const TEMPLATES: Record<string, CategorySeed[]> = {
     {
       name: "Starters",
       items: [
-        { name: "Samosas", description: "Potato pea, tamarind chutney.", priceCents: 1100 },
-        { name: "Onion bhaji", description: "Crispy gram flour fritters.", priceCents: 1000 },
+        {
+          name: "Samosas",
+          description: "Potato pea, tamarind chutney.",
+          priceCents: 1100,
+          dietaryTags: ["vegan", "vegetarian", "halal", "nut-free"],
+        },
+        {
+          name: "Onion bhaji",
+          description: "Crispy gram flour fritters.",
+          priceCents: 1000,
+          dietaryTags: ["vegan", "vegetarian", "gluten-free", "halal", "nut-free"],
+        },
       ],
     },
     {
       name: "Curries",
       items: [
-        { name: "Butter chicken", description: "Creamy tomato, mild spice, rice.", priceCents: 2190, image: "/images/food/indian.jpg" },
-        { name: "Lamb rogan josh", description: "Kashmiri spices, yoghurt.", priceCents: 2490 },
-        { name: "Palak paneer", description: "Spinach, homemade paneer.", priceCents: 1990 },
-        { name: "Dal makhani", description: "Black lentils, butter, cream.", priceCents: 1790 },
+        {
+          name: "Butter chicken",
+          description: "Creamy tomato, mild spice, rice.",
+          priceCents: 2190,
+          image: "/images/food/indian.jpg",
+          dietaryTags: ["gluten-free", "halal", "nut-free"],
+        },
+        {
+          name: "Lamb rogan josh",
+          description: "Kashmiri spices, yoghurt.",
+          priceCents: 2490,
+          dietaryTags: ["gluten-free", "halal", "nut-free"],
+        },
+        {
+          name: "Palak paneer",
+          description: "Spinach, homemade paneer.",
+          priceCents: 1990,
+          dietaryTags: ["vegetarian", "gluten-free", "halal", "nut-free"],
+        },
+        {
+          name: "Dal makhani",
+          description: "Black lentils, butter, cream.",
+          priceCents: 1790,
+          dietaryTags: ["vegetarian", "gluten-free", "halal", "nut-free"],
+        },
       ],
     },
     {
       name: "Breads & sides",
       items: [
-        { name: "Garlic naan", description: "Tandoor baked.", priceCents: 450 },
-        { name: "Raita", description: "Cucumber yoghurt.", priceCents: 400 },
+        { name: "Garlic naan", description: "Tandoor baked.", priceCents: 450, dietaryTags: ["vegetarian", "halal", "nut-free"] },
+        {
+          name: "Raita",
+          description: "Cucumber yoghurt.",
+          priceCents: 400,
+          dietaryTags: ["vegetarian", "gluten-free", "halal", "nut-free"],
+        },
       ],
     },
   ]),
@@ -186,17 +325,27 @@ const TEMPLATES: Record<string, CategorySeed[]> = {
     {
       name: "Mains",
       items: [
-        { name: "Beef burrito", description: "Rice, beans, pico, cheese.", priceCents: 1890, image: "/images/food/mexican.jpg" },
-        { name: "Chicken taco trio", description: "Three soft tacos, salsa verde.", priceCents: 1690 },
-        { name: "Veggie bowl", description: "Black beans, corn, avocado, lime.", priceCents: 1790 },
-        { name: "Quesadilla", description: "Cheese, jalapeño, sour cream.", priceCents: 1590 },
+        { name: "Beef burrito", description: "Rice, beans, pico, cheese.", priceCents: 1890, image: "/images/food/mexican.jpg", dietaryTags: ["nut-free"] },
+        { name: "Chicken taco trio", description: "Three soft tacos, salsa verde.", priceCents: 1690, dietaryTags: ["nut-free"] },
+        {
+          name: "Veggie bowl",
+          description: "Black beans, corn, avocado, lime.",
+          priceCents: 1790,
+          dietaryTags: ["vegan", "vegetarian", "gluten-free", "nut-free"],
+        },
+        { name: "Quesadilla", description: "Cheese, jalapeño, sour cream.", priceCents: 1590, dietaryTags: ["vegetarian", "nut-free"] },
       ],
     },
     {
       name: "Sides",
       items: [
-        { name: "Guacamole & chips", description: "House guac, tortilla chips.", priceCents: 900 },
-        { name: "Elote", description: "Street corn, mayo, chilli, cotija.", priceCents: 750 },
+        {
+          name: "Guacamole & chips",
+          description: "House guac, tortilla chips.",
+          priceCents: 900,
+          dietaryTags: ["vegan", "vegetarian", "gluten-free", "nut-free"],
+        },
+        { name: "Elote", description: "Street corn, mayo, chilli, cotija.", priceCents: 750, dietaryTags: ["vegetarian", "gluten-free", "nut-free"] },
       ],
     },
     drinks,
@@ -205,10 +354,22 @@ const TEMPLATES: Record<string, CategorySeed[]> = {
     {
       name: "Baked",
       items: [
-        { name: "Sourdough loaf", description: "Same-day bake.", priceCents: 850, image: "/images/food/bakery.jpg" },
-        { name: "Croissant", description: "Butter, flaky.", priceCents: 550 },
+        {
+          name: "Sourdough loaf",
+          description: "Same-day bake.",
+          priceCents: 850,
+          image: "/images/food/bakery.jpg",
+          dietaryTags: ["vegan", "vegetarian", "nut-free"],
+        },
+        { name: "Croissant", description: "Butter, flaky.", priceCents: 550, dietaryTags: ["vegetarian", "nut-free"] },
         { name: "Meat pie", description: "Classic beef, tomato sauce.", priceCents: 750 },
-        { name: "Vanilla slice", description: "Custard, passionfruit icing.", priceCents: 650 },
+        {
+          name: "Vanilla slice",
+          description: "Custard, passionfruit icing.",
+          priceCents: 650,
+          dietaryTags: ["vegetarian"],
+          allergens: ["tree-nuts"],
+        },
       ],
     },
     {
@@ -223,16 +384,37 @@ const TEMPLATES: Record<string, CategorySeed[]> = {
     {
       name: "Fish & chips",
       items: [
-        { name: "Beer-battered flathead", description: "Chips, tartare, lemon.", priceCents: 2290, image: "/images/food/sushi.jpg" },
-        { name: "Grilled barramundi", description: "Salad, lemon butter.", priceCents: 2690 },
-        { name: "Salt & pepper squid", description: "Aioli.", priceCents: 1690 },
+        {
+          name: "Beer-battered flathead",
+          description: "Chips, tartare, lemon.",
+          priceCents: 2290,
+          image: "/images/food/sushi.jpg",
+          dietaryTags: ["nut-free"],
+        },
+        {
+          name: "Grilled barramundi",
+          description: "Salad, lemon butter.",
+          priceCents: 2690,
+          dietaryTags: ["gluten-free", "nut-free"],
+        },
+        { name: "Salt & pepper squid", description: "Aioli.", priceCents: 1690, dietaryTags: ["nut-free"] },
       ],
     },
     {
       name: "Sides",
       items: [
-        { name: "Garden salad", description: "House dressing.", priceCents: 900 },
-        { name: "Extra chips", description: "Sea salt.", priceCents: 650 },
+        {
+          name: "Garden salad",
+          description: "House dressing.",
+          priceCents: 900,
+          dietaryTags: ["vegan", "vegetarian", "gluten-free", "nut-free"],
+        },
+        {
+          name: "Extra chips",
+          description: "Sea salt.",
+          priceCents: 650,
+          dietaryTags: ["vegan", "vegetarian", "gluten-free", "nut-free"],
+        },
       ],
     },
     drinks,
@@ -243,15 +425,35 @@ const TEMPLATES: Record<string, CategorySeed[]> = {
       items: [
         { name: "Chef's special", description: "Ask the kitchen — seasonal favourite.", priceCents: 2190 },
         { name: "House burger", description: "Beef patty, salad, chips.", priceCents: 1890, image: "/images/food/burger.jpg" },
-        { name: "Chicken salad", description: "Grilled chicken, greens, vinaigrette.", priceCents: 1790 },
-        { name: "Veggie bowl", description: "Roast veg, grains, tahini.", priceCents: 1690 },
+        {
+          name: "Chicken salad",
+          description: "Grilled chicken, greens, vinaigrette.",
+          priceCents: 1790,
+          dietaryTags: ["gluten-free", "nut-free"],
+        },
+        {
+          name: "Veggie bowl",
+          description: "Roast veg, grains, tahini.",
+          priceCents: 1690,
+          dietaryTags: ["vegan", "vegetarian"],
+        },
       ],
     },
     {
       name: "Sides",
       items: [
-        { name: "Chips", description: "Crispy, salted.", priceCents: 650 },
-        { name: "Side salad", description: "Seasonal greens.", priceCents: 700 },
+        {
+          name: "Chips",
+          description: "Crispy, salted.",
+          priceCents: 650,
+          dietaryTags: ["vegan", "vegetarian", "gluten-free", "nut-free"],
+        },
+        {
+          name: "Side salad",
+          description: "Seasonal greens.",
+          priceCents: 700,
+          dietaryTags: ["vegan", "vegetarian", "gluten-free", "nut-free"],
+        },
       ],
     },
     drinks,
@@ -295,7 +497,8 @@ export function menuForCuisine(templateKey: string): CategorySeed[] {
   return TEMPLATES[templateKey] ?? TEMPLATES.Default;
 }
 
-/** Deep-clone menu categories for Prisma create payloads. */
-export function cloneMenuCategories(templateKey: string): CategorySeed[] {
-  return structuredClone(menuForCuisine(templateKey));
+/** Deep-clone and tag menu categories for Prisma create payloads. */
+export function cloneMenuCategories(templateKey: string) {
+  const cloned = structuredClone(menuForCuisine(templateKey));
+  return tagMenuCategories(cloned, templateKey);
 }

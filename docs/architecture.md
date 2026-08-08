@@ -22,7 +22,8 @@ flowchart LR
 | `src/lib/cities.ts` | Canonical `DEMO_CITIES` (id + label + CBD pin). `resolveRestaurantQuery` treats a bare city name in `q` as a city filter. `matchesRestaurantCity` accepts id (`melbourne`) or label (`Melbourne`). |
 | `src/components/location-provider.tsx` | Session pin in `localStorage` key `aussieeats_location_v1`. |
 | `src/components/restaurant-search.tsx` | Hero/header search waits for hydration so a saved pin is not dropped, then navigates to `/restaurants?...`. |
-| `src/app/(store)/restaurants/page.tsx` | Loads active restaurants, filters by `q` / cuisine / city / open-now, optionally sorts by Haversine distance when `lat`/`lng` are present. |
+| `src/app/(store)/restaurants/page.tsx` | Loads active restaurants, filters by `q` / cuisine / city / open-now / diet+allergy, optionally sorts by Haversine distance when `lat`/`lng` are present. |
+| `src/lib/dietary.ts` | Diet filter ids, URL parsing (`diet=…`, `allergy=nuts`), conservative item match (untagged ≠ nut-free). A venue matches only when one item satisfies every selected diet, so browse results and the filtered menu agree; the venue-level `dietaryTags` union is display-only. |
 
 **Constraints:**
 
