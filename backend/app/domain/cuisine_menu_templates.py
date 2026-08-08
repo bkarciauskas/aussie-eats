@@ -1,7 +1,7 @@
 """Cuisine-templated demo menus for Places ingest.
 
-Ported from prisma/cuisine-menu-templates.ts. Templates are exported to JSON via
-`npm run db:export-cuisine-templates` so the Python ingest stays in sync.
+Menus live in cuisine_menu_templates.json beside this module. Tagging heuristics
+match the former prisma/tag-menu-item.ts port in tag_menu_item.py.
 """
 
 from __future__ import annotations
