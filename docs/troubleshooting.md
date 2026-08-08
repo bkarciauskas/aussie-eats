@@ -6,10 +6,10 @@ Quick fixes for issues that have already bitten this codebase. Verify against cu
 
 | Symptom | Likely cause | Fix |
 | --- | --- | --- |
-| Prisma client missing / generate errors | Skipped postinstall | `npx prisma generate` |
 | Empty restaurant list after reset | Catalog wiped | `npm run db:seed` (handwritten) and/or `npm run db:import-places` |
-| `db:import-places` throws missing key | No Places key in `.env` | Set `GOOGLE_PLACES_API_KEY` (or Maps key fallback); enable legacy Places API |
+| `db:import-places` throws missing key | No Places key in `.env` / `backend/.env` | Set `GOOGLE_PLACES_API_KEY` (or Maps key fallback); enable legacy Places API |
 | Import fails with REQUEST_DENIED | Wrong API product or key restrictions | Use legacy Places API; avoid HTTP-referrer restriction on the server key |
+| Import cannot reach Mongo | Missing `MONGODB_URI` | Set Atlas/local URI in `backend/.env` (see `backend/.env.example`) |
 | Maps blank on `/restaurants` | No browser Maps key | Set `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`; list/distance still work without it |
 
 ## City / search

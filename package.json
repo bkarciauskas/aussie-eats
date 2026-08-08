@@ -11,7 +11,8 @@
     "start": "next start",
     "lint": "eslint",
     "test": "tsx --test src/lib/*.test.ts src/components/**/*.test.ts",
-    "db:seed": "cd backend && python3 -m app.seed"
+    "db:seed": "cd backend && python3 -m app.seed",
+    "db:import-places": "cd backend && python3 -m app.import_places"
   },
   "dependencies": {
     "@vis.gl/react-google-maps": "^1.9.0",

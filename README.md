@@ -1,35 +1,42 @@
 # AussieEats
 
-Local-only multi-vendor food delivery demo (customer storefront + `/admin`) built with **Next.js App Router**, **TypeScript**, **Tailwind CSS**, and **Prisma + SQLite**.
+Local-only multi-vendor food delivery demo (customer storefront + `/admin`) built with **Next.js App Router**, **TypeScript**, **Tailwind CSS**, and **FastAPI + MongoDB**.
 
 ## Requirements
 
 - Node.js **20.x** (22 also works)
 - npm
-- Optional: Google Places API (New) key for catalog ingest
+- Python 3 + `backend/requirements.txt`
+- MongoDB (local or Atlas)
+- Optional: Google Places API key for catalog ingest
 
 ## Quick start
 
 ```bash
 cp .env.example .env
+cp backend/.env.example backend/.env
 npm install
-npx prisma migrate dev
+cd backend && python3 -m pip install -r requirements.txt && cd ..
 npm run db:seed
+# terminal 1
+cd backend && python3 -m uvicorn app.main:app --reload --port 8000
+# terminal 2
 npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
 
-`db:seed` upserts demo users. If the restaurant catalog is empty it loads the handwritten fallback (~23 venues). Sample orders and customer reviews are written once into SQLite and left alone on later seed runs (use `FORCE_SEED_ORDERS=1` to rebuild them). It does **not** wipe Places-imported restaurants.
+`db:seed` upserts demo users. If the restaurant catalog is empty it loads the handwritten fallback (~23 venues). Sample orders and customer reviews are written once into Mongo and left alone on later seed runs (use `FORCE_SEED_ORDERS=1` to rebuild them). It does **not** wipe Places-imported restaurants.
 
 ### Large catalog (Google Places)
 
-One-shot ingest into SQLite (~100 restaurants per major city, ~600 total).
+One-shot ingest into Mongo (~100 restaurants per major city, ~600 total).
 
 ```bash
 # Enable the (legacy) Places API on the Google Cloud project, then:
 npm run db:import-places
 # optional: -- --per-city=100 -- --city=sydney
+# equivalent: cd backend && python3 -m app.import_places
 ```
 
 Uses Nearby Search / Text Search / Details / Photo. Expect several minutes and Places quota. Re-runs upsert by `placeId` and skip cached photos under `public/images/imported/`. Menus are cuisine-templated (Places has no menus). Venue details are sourced from Google Places; menus are demo-generated.
@@ -38,9 +45,10 @@ Uses Nearby Search / Text Search / Details / Photo. Expect several minutes and P
 
 | Variable | Example | Purpose |
 | --- | --- | --- |
-| `DATABASE_URL` | `file:./dev.db` | SQLite file at `prisma/dev.db` |
 | `SESSION_SECRET` | 32+ char string | iron-session cookie encryption |
 | `API_BASE_URL` | `http://127.0.0.1:8000` | FastAPI base URL for login/signup JWT bridge |
+| `MONGODB_URI` / `MONGODB_DB` | Atlas or local URI | FastAPI + `db:seed` / `db:import-places` |
+| `JWT_SECRET` | 32+ char string | FastAPI JWT signing |
 | `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | browser key | Maps JS + Places autocomplete on `/restaurants` |
 | `GOOGLE_PLACES_API_KEY` | server key | `db:import-places` (falls back to the Maps key) |
 
@@ -56,8 +64,7 @@ Uses Nearby Search / Text Search / Details / Photo. Expect several minutes and P
 ```bash
 npm run db:seed                        # users; orders/reviews if missing; keeps catalog
 FORCE_SEED_ORDERS=1 npm run db:seed    # rebuild sample orders + reviews
-npm run db:reset                       # drop DB, migrate, seed (catalog empty until import or fallback)
-npm run db:import-places               # pull/refresh real venues into SQLite
+npm run db:import-places               # pull/refresh real venues into Mongo
 ```
 
 ## Presenter script (≈3 minutes)
@@ -73,7 +80,7 @@ npm run db:import-places               # pull/refresh real venues into SQLite
 
 ## Smoke checklist
 
-- [ ] `npm install && npx prisma migrate dev && npm run db:seed && npm run dev` starts cleanly
+- [ ] `npm install && npm run db:seed && npm run dev` (with FastAPI up) starts cleanly
 - [ ] Unauthenticated browse of `/restaurants` and a menu works
 - [ ] Home hero search and header search both land on `/restaurants?q=…` (with `city` when a demo pin is set)
 - [ ] Demo city picker sets location for the session (localStorage); city filter on `/restaurants` works
@@ -88,8 +95,8 @@ npm run db:import-places               # pull/refresh real venues into SQLite
 
 ## Architecture notes
 
-- **Persistence:** SQLite via Prisma (`prisma/dev.db`) — survives refresh; no separate DB server
-- **Catalog ingest:** `scripts/import-places.ts` → upsert by `placeId`; photos in `public/images/imported/`
+- **Persistence:** MongoDB via FastAPI (`backend/`) — Atlas or local
+- **Catalog ingest:** `backend/app/import_places.py` → upsert by `placeId`; photos in `public/images/imported/`
 - **Auth:** FastAPI JWT via `src/lib/api.ts`; iron-session stores the Bearer token (`CUSTOMER` / `ADMIN` roles)
 - **Cart:** client React context + `localStorage`; server writes orders on checkout
 - **Money:** integer cents (`unitPriceCents` / `priceCents`); display with `formatAUD` (`en-AU`)
@@ -111,7 +118,6 @@ Deeper developer docs (browse/location, cart money, Places runbook, Cloud Agents
 | `npm run dev` | Next.js dev server |
 | `npm run build` / `npm start` | Production build & serve |
 | `npm run db:seed` | Upsert demo users; seed orders/reviews if missing; bootstrap catalog if empty |
-| `npm run db:import-places` | One-shot Google Places → SQLite ingest |
-| `npm run db:reset` | Drop DB, migrate, seed |
+| `npm run db:import-places` | One-shot Google Places → Mongo ingest |
 | `npm test` | Unit tests (`src/**/*.test.ts` via tsx) |
 | `npm run lint` | ESLint |
