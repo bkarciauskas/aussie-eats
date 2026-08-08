@@ -48,6 +48,12 @@ class FakeCursor:
             docs = docs[: self._limit]
         return docs
 
+    async def to_list(self, length: Optional[int] = None) -> list[dict[str, Any]]:
+        docs = self._materialize()
+        if length is None:
+            return docs
+        return docs[:length]
+
     def __aiter__(self):
         self._iter = iter(self._materialize())
         return self
@@ -69,9 +75,19 @@ class FakeCollection:
                 return copy.deepcopy(doc)
         return None
 
-    def find(self, query: Optional[dict[str, Any]] = None) -> FakeCursor:
+    def find(
+        self,
+        query: Optional[dict[str, Any]] = None,
+        projection: Optional[dict[str, Any]] = None,
+    ) -> FakeCursor:
         query = query or {}
         matched = [copy.deepcopy(d) for d in self.docs if _match(d, query)]
+        if projection:
+            include = {k for k, v in projection.items() if v}
+            projected: list[dict[str, Any]] = []
+            for doc in matched:
+                projected.append({k: doc[k] for k in include if k in doc})
+            matched = projected
         return FakeCursor(matched)
 
     async def insert_one(self, doc: dict[str, Any]):
@@ -92,9 +108,35 @@ class FakeCollection:
                 return FakeUpdateResult(1)
         return FakeUpdateResult(0)
 
+    async def delete_many(self, query: Optional[dict[str, Any]] = None):
+        query = query or {}
+        kept = [doc for doc in self.docs if not _match(doc, query)]
+        deleted = len(self.docs) - len(kept)
+        self.docs = kept
+        return FakeUpdateResult(deleted)
+
     async def count_documents(self, query: Optional[dict[str, Any]] = None) -> int:
         query = query or {}
         return sum(1 for doc in self.docs if _match(doc, query))
+
+    def aggregate(self, pipeline: list[dict[str, Any]]) -> FakeCursor:
+        docs = [copy.deepcopy(d) for d in self.docs]
+        for stage in pipeline:
+            if "$group" in stage:
+                group = stage["$group"]
+                key_expr = group["_id"]
+                field = key_expr[1:] if isinstance(key_expr, str) and key_expr.startswith("$") else None
+                buckets: dict[Any, dict[str, Any]] = {}
+                for doc in docs:
+                    key = doc.get(field) if field else None
+                    bucket = buckets.setdefault(key, {"_id": key, "count": 0})
+                    if "count" in group:
+                        bucket["count"] += 1
+                docs = list(buckets.values())
+            elif "$sort" in stage:
+                for key, direction in reversed(list(stage["$sort"].items())):
+                    docs.sort(key=lambda d, k=key: d.get(k), reverse=direction < 0)
+        return FakeCursor(docs)
 
     async def create_index(self, *_args, **_kwargs):
         return None

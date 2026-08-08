@@ -28,6 +28,10 @@ def parse_dietary_tags(raw: Optional[str]) -> list[str]:
     return [tag for tag in parse_json_string_array(raw) if tag in _DIET_SET]
 
 
+def parse_allergens(raw: Optional[str]) -> list[str]:
+    return [tag for tag in parse_json_string_array(raw) if tag in _ALLERGEN_SET]
+
+
 def serialize_tags(tags: Iterable[str]) -> str:
     return json.dumps(list(tags))
 
