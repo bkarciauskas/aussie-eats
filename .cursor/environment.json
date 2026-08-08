@@ -1,0 +1,5 @@
+{
+  "name": "AussieEats",
+  "install": "sudo apt-get update -qq && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq python3.12-venv python3-pip\nnpm ci\npython3 -m venv backend/.venv\nbackend/.venv/bin/pip install -U pip\nbackend/.venv/bin/pip install -r backend/requirements.txt",
+  "start": "bash scripts/cloud-agent-start.sh"
+}
