@@ -37,6 +37,13 @@ export const restaurantSummarySchema = z.object({
 
 export type RestaurantSummary = z.infer<typeof restaurantSummarySchema>;
 
+export const restaurantListResponseSchema = z.object({
+  restaurants: z.array(restaurantSummarySchema),
+  availableCuisines: z.array(z.string()).default([]),
+});
+
+export type RestaurantListResponse = z.infer<typeof restaurantListResponseSchema>;
+
 export const menuItemSchema = z.object({
   id: z.string().min(1),
   categoryId: z.string().min(1),

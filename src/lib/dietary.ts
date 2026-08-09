@@ -37,8 +37,13 @@ export function isAllergenId(value: string): value is AllergenId {
   return ALLERGEN_SET.has(value);
 }
 
-export function parseJsonStringArray(raw: string | null | undefined): string[] {
+export function parseJsonStringArray(
+  raw: string | string[] | null | undefined,
+): string[] {
   if (!raw) return [];
+  if (Array.isArray(raw)) {
+    return raw.filter((v): v is string => typeof v === "string");
+  }
   try {
     const parsed: unknown = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
@@ -48,11 +53,15 @@ export function parseJsonStringArray(raw: string | null | undefined): string[] {
   }
 }
 
-export function parseDietaryTags(raw: string | null | undefined): DietId[] {
+export function parseDietaryTags(
+  raw: string | string[] | null | undefined,
+): DietId[] {
   return parseJsonStringArray(raw).filter(isDietId);
 }
 
-export function parseAllergens(raw: string | null | undefined): AllergenId[] {
+export function parseAllergens(
+  raw: string | string[] | null | undefined,
+): AllergenId[] {
   return parseJsonStringArray(raw).filter(isAllergenId);
 }
 
@@ -111,8 +120,8 @@ export function applyDietSearchParams(
 }
 
 export type DietaryTagged = {
-  dietaryTags: string;
-  allergens?: string | null;
+  dietaryTags: string | string[];
+  allergens?: string | string[] | null;
 };
 
 /**
