@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { beginGuestSession } from "@/lib/auth";
-import { ApiError, placeOrder, updateOrderStatus } from "@/lib/backend";
+import { ApiError, getMyOrder, placeOrder, updateOrderStatus } from "@/lib/backend";
 import {
   CardBrand,
   PaymentMethodId,
@@ -152,5 +152,35 @@ export async function updateOrderStatusAction(orderId: string, status: OrderStat
     return { ok: true as const };
   } catch (err) {
     return { error: actionError(err, "Unable to update order status.") };
+  }
+}
+
+/** Lightweight poll for the customer live order tracker (session-authed). */
+export async function pollMyOrderStatusAction(orderId: string) {
+  const session = await requireUser();
+  if (!session?.userId) {
+    return { error: "Please log in to view this order.", unauthorized: true as const };
+  }
+
+  if (!orderId?.trim()) {
+    return { error: "Order not found." };
+  }
+
+  try {
+    const order = await getMyOrder(orderId);
+    if (!order) {
+      return { error: "Order not found." };
+    }
+    return {
+      ok: true as const,
+      status: order.status,
+      statusHistoryJson: order.statusHistoryJson,
+      updatedAt: order.updatedAt.toISOString(),
+    };
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 401) {
+      return { error: "Please log in to view this order.", unauthorized: true as const };
+    }
+    return { error: actionError(err, "Unable to refresh order status.") };
   }
 }
