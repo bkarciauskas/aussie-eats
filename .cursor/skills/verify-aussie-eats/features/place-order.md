@@ -5,12 +5,12 @@ Add a menu item, check out with a mocked card payment, and land on the order det
 ## Sub-features
 
 - Client cart (`aussieeats_cart_v1`) then Server Action → FastAPI reprice.
-- Checkout payment methods; Card enables **Pay & place order**.
+- Card selection shows card fields and changes the submit label to **Pay & place order**.
 - Order detail shows `data-status="pending"` and card summary.
 
 ## How to get to it (user POV)
 
-`/restaurants/harbour-burger-co` → **Add** → **Cart** → **Checkout**.
+Sign in → `/restaurants/harbour-burger-co` → **Add** → **Cart** → **Checkout**.
 
 ## Driving it with drive.mjs
 
@@ -21,10 +21,11 @@ Add a menu item, check out with a mocked card payment, and land on the order det
 - Login with `next=/restaurants/harbour-burger-co`.
 - **Add** first item → `/cart` → Checkout.
 - Select **Card**, fill `4242…` / name / `12/30` / `123` → **Pay & place order**.
-- Assert `/orders/:id`, `[data-status="pending"]`, and Visa 4242 copy.
+- Assert `/orders/:id`, `[data-status="pending"]`, and **Card · Visa ending 4242**.
 
 ## Gotchas
 
 - Default payment method is Pay on delivery (**Place order**); must select **Card** for the Pay & place order label.
-- Mutates shared Mongo — prefer a dedicated DB when parallelism matters.
+- Harbour Burger Co must be open; **Add** is disabled outside its opening hours.
+- Mutates shared Mongo. Prefer a dedicated DB when parallelism matters.
 - Harbour slug must exist (seed/snapshot).

@@ -7,10 +7,12 @@ Verification recipes from the user's point of view. Each file is a complete proo
 | Home hero search | [home-hero-search.md](./home-hero-search.md) | Storefront `/` → `/restaurants?q=…` |
 | Search suggestions | [search-suggestions.md](./search-suggestions.md) | Hero typeahead + recent searches |
 | Browse restaurants | [browse-restaurants.md](./browse-restaurants.md) | Storefront `/restaurants` |
+| Location-based browse | [location-based-browse.md](./location-based-browse.md) | `/restaurants` geolocation → distance sort |
 | Melbourne city browse | [melbourne-city-browse.md](./melbourne-city-browse.md) | Home city pin → `/restaurants?city=melbourne` |
 | Customer login | [customer-login.md](./customer-login.md) | Storefront `/login` |
 | Favourites | [favourites.md](./favourites.md) | Storefront `/restaurants` → `/favourites` |
 | Place order | [place-order.md](./place-order.md) | Cart → checkout → `/orders/:id` |
+| Wallet checkout | [wallet-checkout.md](./wallet-checkout.md) | Checkout wallet → `/orders/:id` |
 | Guest checkout | [guest-checkout.md](./guest-checkout.md) | Anonymous cart → guest checkout → `/orders/:id` |
 | Live order status | [live-order-status.md](./live-order-status.md) | `/orders/:id` poll + mock courier ETA |
 | Admin login + dashboard | [admin-login.md](./admin-login.md) | `/admin/login` → `/admin` |
@@ -19,7 +21,7 @@ Verification recipes from the user's point of view. Each file is a complete proo
 
 Start with the feature that matches the change under test. `home-hero-search` is the default smoke proof for storefront search wiring.
 
-**Not mapped yet** (real routes — add when needed): `/signup`, cart-only, `/orders` list, post-delivery reviews, admin new/edit restaurant, diet/open-now filters.
+**Not mapped yet.** Add when needed: `/signup`, cart-only, `/orders` list, standalone `/restaurants/[slug]` detail/menu coverage, post-delivery reviews, admin new/edit restaurant, diet/open-now filters.
 
 ## Core smoke
 

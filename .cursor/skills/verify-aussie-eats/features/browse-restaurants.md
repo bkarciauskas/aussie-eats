@@ -18,11 +18,12 @@ Nav **Restaurants** → `/restaurants`, or open `/restaurants` directly.
 .cursor/skills/verify-aussie-eats/helpers/drive.mjs browse-restaurants
 ```
 
-- Open `/restaurants`.
+- Open `/`, then choose **Restaurants** in the primary nav.
 - Assert heading **Restaurants** and at least one `a.restaurant-row`.
 - Optional manual: set City to **Sydney** and confirm filtered results.
 
 ## Gotchas
 
-- After snapshot seed the list is large (hundreds of venues) with no pagination — assert presence, not exact counts.
+- After snapshot seed the list is large (hundreds of venues) with no pagination. Assert presence, not exact counts.
 - Empty catalog usually means `db:seed` was skipped or Mongo is unreachable.
+- Interactive map pins require `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`; without it the page shows a map placeholder.

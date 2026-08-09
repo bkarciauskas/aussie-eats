@@ -5,8 +5,8 @@ From the landing hero, search restaurants/suburbs/cuisines and land on a filtere
 ## Sub-features
 
 - Hero input enables after LocationProvider hydration.
-- Submit (Find or Enter) navigates to `/restaurants` with `q=…`.
-- Optional city pin may also append `lat` / `lng` / `place` / `city`.
+- Text queries navigate to `/restaurants` with `q=…`; demo city names use `city=…`.
+- An optional pin appends `lat` / `lng` / `place`; pin-only browse uses `city`.
 
 ## How to get to it (user POV)
 
@@ -25,6 +25,6 @@ From the landing hero, search restaurants/suburbs/cuisines and land on a filtere
 
 ## Gotchas
 
-- Do not submit before hydration — input/button stay `disabled` until then.
+- Do not submit before hydration. The input and button stay `disabled` until then.
 - Harbour Burger Co is Sydney (`harbour-burger-co`); it matches `q=burger`, not `city=melbourne`.
-- Soft navigation can paint the Restaurants heading before rows arrive — wait for `a.restaurant-row` (e.g. Harbour Burger Co), not only `h1`.
+- Soft navigation can paint the Restaurants heading before rows arrive. Wait for `a.restaurant-row` (e.g. Harbour Burger Co), not only `h1`.
