@@ -16,6 +16,11 @@ import {
 
 type Props = {
   isLoggedIn: boolean;
+  isGuest?: boolean;
+  defaultContact?: {
+    name: string;
+    email: string;
+  };
   defaultAddress?: {
     label: string;
     line1: string;
@@ -25,13 +30,19 @@ type Props = {
   };
 };
 
-export function CheckoutForm({ isLoggedIn, defaultAddress }: Props) {
+export function CheckoutForm({
+  isLoggedIn,
+  isGuest = false,
+  defaultContact,
+  defaultAddress,
+}: Props) {
   const { cart, subtotalCents, totalCents, clearCart } = useCart();
   const [error, setError] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodId>("pay_on_delivery");
   const [cardNumber, setCardNumber] = useState("");
   const [pending, startTransition] = useTransition();
   const router = useRouter();
+  const collectGuestContact = !isLoggedIn || isGuest;
 
   if (!cart.items.length) {
     return (
@@ -40,26 +51,6 @@ export function CheckoutForm({ isLoggedIn, defaultAddress }: Props) {
         <Link href="/restaurants" className="btn-primary mt-4 inline-flex">
           Browse restaurants
         </Link>
-      </div>
-    );
-  }
-
-  if (!isLoggedIn) {
-    return (
-      <div className="panel">
-        <h2 className="font-display text-2xl">Log in to checkout</h2>
-        <p className="mt-2 text-[var(--ae-ink-muted)]">
-          You can browse and build a cart without an account. Sign in to place your order.
-        </p>
-        <Link
-          href={`/login?next=${encodeURIComponent("/checkout")}`}
-          className="btn-primary mt-6 inline-flex"
-        >
-          Log in to continue
-        </Link>
-        <p className="mt-3 text-sm text-[var(--ae-ink-soft)]">
-          Demo: demo@aussieeats.local / demo1234
-        </p>
       </div>
     );
   }
@@ -75,6 +66,18 @@ export function CheckoutForm({ isLoggedIn, defaultAddress }: Props) {
         if (paymentMethod === "card" && (digits.length < 12 || digits.length > 19)) {
           setError("Enter a valid demo card number with 12 to 19 digits.");
           return;
+        }
+        const guestName = String(fd.get("guestName") || "").trim();
+        const guestEmail = String(fd.get("guestEmail") || "").trim();
+        if (collectGuestContact) {
+          if (!guestName) {
+            setError("Enter your name to continue as a guest.");
+            return;
+          }
+          if (!guestEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guestEmail)) {
+            setError("Enter a valid email to continue as a guest.");
+            return;
+          }
         }
         startTransition(async () => {
           const result = await placeOrderAction({
@@ -99,6 +102,9 @@ export function CheckoutForm({ isLoggedIn, defaultAddress }: Props) {
                     cardBrand: detectCardBrand(digits),
                   }
                 : { method: paymentMethod },
+            guest: collectGuestContact
+              ? { name: guestName, email: guestEmail }
+              : undefined,
           });
           if (result?.error) {
             if ("needsAuth" in result && result.needsAuth) {
@@ -116,7 +122,58 @@ export function CheckoutForm({ isLoggedIn, defaultAddress }: Props) {
       }}
     >
       <div className="panel space-y-4">
-        <h2 className="font-display text-2xl">Delivery address</h2>
+        {collectGuestContact ? (
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="font-display text-2xl">Your details</h2>
+                <p className="mt-1 text-sm text-[var(--ae-ink-muted)]">
+                  Checkout as a guest — no account required.
+                </p>
+              </div>
+              {!isLoggedIn ? (
+                <Link
+                  href={`/login?next=${encodeURIComponent("/checkout")}`}
+                  className="text-sm text-[var(--ae-green)] underline"
+                >
+                  Log in instead
+                </Link>
+              ) : null}
+            </div>
+            <label className="field">
+              <span>Name</span>
+              <input
+                name="guestName"
+                required
+                autoComplete="name"
+                defaultValue={defaultContact?.name || ""}
+                placeholder="Your name"
+              />
+            </label>
+            <label className="field">
+              <span>Email</span>
+              <input
+                name="guestEmail"
+                type="email"
+                required
+                autoComplete="email"
+                defaultValue={defaultContact?.email || ""}
+                placeholder="you@example.com"
+              />
+            </label>
+          </div>
+        ) : (
+          <div>
+            <h2 className="font-display text-2xl">Delivery address</h2>
+            <p className="mt-1 text-sm text-[var(--ae-ink-muted)]">
+              Ordering as {defaultContact?.email || "your account"}
+            </p>
+          </div>
+        )}
+
+        {collectGuestContact ? (
+          <h2 className="font-display text-2xl">Delivery address</h2>
+        ) : null}
         <p className="text-sm text-[var(--ae-ink-muted)]">Australia / NSW · AUD pricing</p>
         <label className="field">
           <span>Label</span>

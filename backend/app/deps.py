@@ -32,6 +32,7 @@ async def optional_current_user(
         email=payload.email,
         name=payload.name,
         role=payload.role,
+        is_guest=bool(payload.is_guest),
     )
 
 

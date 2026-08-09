@@ -34,6 +34,39 @@ export async function loginWithPassword(email: string, password: string) {
   }
 }
 
+export async function beginGuestSession(name: string, email: string) {
+  const trimmedName = name.trim();
+  const normalizedEmail = email.toLowerCase().trim();
+  if (!trimmedName) {
+    return { error: "Name is required." as const };
+  }
+  if (!normalizedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+    return { error: "Please enter a valid email address." as const };
+  }
+
+  try {
+    const auth = await apiFetch("/auth/guest", {
+      method: "POST",
+      body: { name: trimmedName, email: normalizedEmail },
+      schema: authResponseSchema,
+    });
+    await establishSession(auth);
+    return {
+      user: {
+        id: auth.user.id,
+        email: auth.user.email,
+        name: auth.user.name,
+        role: auth.user.role,
+        isGuest: auth.user.isGuest,
+      },
+    };
+  } catch (err) {
+    return {
+      error: authFailureMessage(err, "Unable to start guest checkout. Please try again."),
+    };
+  }
+}
+
 export async function signupCustomer(name: string, email: string, password: string) {
   const trimmedName = name.trim();
   const normalizedEmail = email.toLowerCase().trim();

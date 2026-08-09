@@ -73,6 +73,7 @@ async def _order_out(
                 email=u["email"],
                 name=u["name"],
                 role=Role(u.get("role", Role.CUSTOMER)),
+                is_guest=bool(u.get("isGuest", False)),
             )
     return OrderOut.model_validate(
         {

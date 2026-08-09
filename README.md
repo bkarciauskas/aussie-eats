@@ -94,7 +94,7 @@ npm run db:export-catalog              # rewrite catalog_snapshot.json from Mong
 - [ ] Demo city picker sets location for the session (localStorage); city filter on `/restaurants` works
 - [ ] Seed restores restaurants across Sydney, Melbourne, Brisbane, Perth, Adelaide, and Hobart (snapshot; Places import only to refresh)
 - [ ] Open now filter, rating counts, hours, and delivery ETA appear when data/location allow
-- [ ] Cart works without login; checkout requires login
+- [x] Cart works without login; checkout allows guest (name + email) or demo login
 - [ ] Placing an order with any mocked payment method creates status `pending`, clears cart, and shows the payment method in `/orders`
 - [ ] AUD formatting (`$x.xx`) and AU address fields (suburb / NSW / postcode / +61) appear
 - [ ] Admin login blocks non-admins from `/admin`

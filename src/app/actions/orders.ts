@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { beginGuestSession } from "@/lib/auth";
 import { ApiError, placeOrder, updateOrderStatus } from "@/lib/backend";
 import {
   CardBrand,
@@ -28,6 +29,11 @@ export type PlaceOrderInput = {
     phone?: string;
   };
   payment: PlaceOrderPayment;
+  /** Required when placing an order without an existing (non-guest) session. */
+  guest?: {
+    name: string;
+    email: string;
+  };
 };
 
 function actionError(err: unknown, fallback: string): string {
@@ -38,9 +44,26 @@ function actionError(err: unknown, fallback: string): string {
 }
 
 export async function placeOrderAction(input: PlaceOrderInput) {
-  const session = await requireUser();
-  if (!session?.userId) {
-    return { error: "Please log in to place an order.", needsAuth: true as const };
+  let session = await requireUser();
+  const guestName = input.guest?.name?.trim() ?? "";
+  const guestEmail = input.guest?.email?.trim() ?? "";
+  const useGuestCheckout =
+    Boolean(guestName && guestEmail) && (!session?.userId || Boolean(session.isGuest));
+
+  if (useGuestCheckout) {
+    const guest = await beginGuestSession(guestName, guestEmail);
+    if ("error" in guest && guest.error) {
+      return { error: guest.error };
+    }
+    session = await requireUser();
+    if (!session?.userId) {
+      return { error: "Unable to start guest checkout. Please try again." };
+    }
+  } else if (!session?.userId) {
+    return {
+      error: "Enter your name and email to checkout as a guest, or log in.",
+      needsAuth: true as const,
+    };
   }
 
   if (!input.items?.length) {

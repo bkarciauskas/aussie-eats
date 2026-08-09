@@ -25,6 +25,11 @@ class LoginRequest(ApiModel):
     password: str
 
 
+class GuestSessionRequest(ApiModel):
+    name: str
+    email: str
+
+
 class AuthResponse(ApiModel):
     access_token: str
     token_type: str = "bearer"

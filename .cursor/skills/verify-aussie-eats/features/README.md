@@ -11,6 +11,7 @@ Verification recipes from the user's point of view. Each file is a complete proo
 | Customer login | [customer-login.md](./customer-login.md) | Storefront `/login` |
 | Favourites | [favourites.md](./favourites.md) | Storefront `/restaurants` → `/favourites` |
 | Place order | [place-order.md](./place-order.md) | Cart → checkout → `/orders/:id` |
+| Guest checkout | [guest-checkout.md](./guest-checkout.md) | Anonymous cart → guest checkout → `/orders/:id` |
 | Admin login + dashboard | [admin-login.md](./admin-login.md) | `/admin/login` → `/admin` |
 | Admin order status | [admin-order-status.md](./admin-order-status.md) | `/admin/orders` pending → preparing |
 | Admin menu edit | [admin-menu-edit.md](./admin-menu-edit.md) | `/admin/restaurants/…/menu` price edit |

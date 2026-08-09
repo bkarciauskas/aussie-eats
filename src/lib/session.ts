@@ -7,7 +7,9 @@ export type SessionData = {
   email?: string;
   name?: string;
   role?: Role;
-  /** Backend JWT from FastAPI /auth/login or /auth/signup. */
+  /** True when the session came from guest checkout (no password account). */
+  isGuest?: boolean;
+  /** Backend JWT from FastAPI /auth/login, /auth/signup, or /auth/guest. */
   accessToken?: string;
   isLoggedIn: boolean;
 };
@@ -19,6 +21,7 @@ export type SessionAuthPayload = {
     email: string;
     name: string;
     role: Role;
+    isGuest?: boolean;
   };
 };
 
@@ -52,6 +55,7 @@ export async function establishSession(auth: SessionAuthPayload) {
   session.email = auth.user.email;
   session.name = auth.user.name;
   session.role = auth.user.role;
+  session.isGuest = Boolean(auth.user.isGuest);
   session.accessToken = auth.access_token;
   session.isLoggedIn = true;
   await session.save();
