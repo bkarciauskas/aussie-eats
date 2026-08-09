@@ -7,8 +7,10 @@ import {
   orderSchema,
   placeOrderResponseSchema,
   restaurantDetailSchema,
+  restaurantListResponseSchema,
   restaurantSummarySchema,
   reviewSchema,
+  type RestaurantListResponse,
   searchSuggestSchema,
   toggleFavouriteSchema,
   type DietaryCatalogVenue,
@@ -23,11 +25,20 @@ export { ApiError };
 
 export async function listRestaurants(options?: {
   activeOnly?: boolean;
-}): Promise<RestaurantSummary[]> {
-  const activeOnly = options?.activeOnly ?? true;
-  const query = activeOnly ? "" : "?activeOnly=false";
-  return apiFetch(`/restaurants${query}`, {
-    schema: z.array(restaurantSummarySchema),
+  city?: string;
+  cuisine?: string;
+  q?: string;
+  diet?: string;
+}): Promise<RestaurantListResponse> {
+  const params = new URLSearchParams();
+  if (options?.activeOnly === false) params.set("activeOnly", "false");
+  if (options?.city) params.set("city", options.city);
+  if (options?.cuisine) params.set("cuisine", options.cuisine);
+  if (options?.q) params.set("q", options.q);
+  if (options?.diet) params.set("diet", options.diet);
+  const query = params.toString();
+  return apiFetch(`/restaurants${query ? `?${query}` : ""}`, {
+    schema: restaurantListResponseSchema,
   });
 }
 

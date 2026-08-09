@@ -5,6 +5,8 @@ from pymongo.asynchronous.database import AsyncDatabase
 from pymongo.errors import PyMongoError
 
 from app.config import get_settings
+from app.domain.dietary import parse_allergens, parse_dietary_tags
+from app.domain.search import parse_cuisine_tags
 
 _client: Optional[AsyncMongoClient] = None
 _db: Optional[AsyncDatabase] = None
@@ -19,10 +21,16 @@ SEARCH_INDEX_DEFINITION = {
             "name": [{"type": "autocomplete"}, {"type": "string"}],
             "suburb": [{"type": "autocomplete"}, {"type": "string"}],
             "city": {"type": "string"},
+            # Atlas string on array path indexes each element.
             "cuisineTags": {"type": "string"},
             "isActive": {"type": "boolean"},
         },
     }
+}
+
+_TAG_MIGRATE_FIELDS = {
+    "restaurants": ("cuisineTags", "dietaryTags"),
+    "menu_items": ("dietaryTags", "allergens"),
 }
 
 
@@ -54,15 +62,49 @@ async def close_db() -> None:
     _db = None
 
 
+def _tags_for_field(field: str, raw) -> list[str]:
+    if field == "cuisineTags":
+        return parse_cuisine_tags(raw)
+    if field == "dietaryTags":
+        return parse_dietary_tags(raw)
+    if field == "allergens":
+        return parse_allergens(raw)
+    return parse_cuisine_tags(raw)
+
+
+async def ensure_tag_array_fields() -> None:
+    """Convert string tag fields on restaurants/menu_items to native arrays."""
+    db = get_db()
+    for collection_name, fields in _TAG_MIGRATE_FIELDS.items():
+        collection = getattr(db, collection_name)
+        async for doc in collection.find({}):
+            updates: dict = {}
+            for field in fields:
+                raw = doc.get(field)
+                if isinstance(raw, list):
+                    continue
+                updates[field] = _tags_for_field(field, raw)
+            if not updates:
+                continue
+            doc_id = doc.get("id")
+            if doc_id is not None:
+                await collection.update_one({"id": doc_id}, {"$set": updates})
+            elif doc.get("_id") is not None:
+                await collection.update_one({"_id": doc["_id"]}, {"$set": updates})
+
+
 async def ensure_indexes() -> None:
     """Create indexes that mirror Prisma unique/index constraints."""
     db = get_db()
 
+    await db.users.create_index("id", unique=True)
     await db.users.create_index("email", unique=True)
     await db.users.create_index("createdAt")
 
+    await db.addresses.create_index("id", unique=True)
     await db.addresses.create_index("userId")
 
+    await db.restaurants.create_index("id", unique=True)
     await db.restaurants.create_index("slug", unique=True)
     await db.restaurants.create_index("placeId", unique=True, sparse=True)
     await db.restaurants.create_index([("city", ASCENDING), ("isActive", ASCENDING)])
@@ -72,31 +114,40 @@ async def ensure_indexes() -> None:
         [("isActive", ASCENDING), ("rating", DESCENDING), ("name", ASCENDING)]
     )
 
+    await db.favourites.create_index("id", unique=True)
     await db.favourites.create_index(
         [("userId", ASCENDING), ("restaurantId", ASCENDING)],
         unique=True,
     )
     await db.favourites.create_index([("userId", ASCENDING), ("createdAt", ASCENDING)])
 
+    await db.categories.create_index("id", unique=True)
     await db.categories.create_index("restaurantId")
     await db.categories.create_index(
         [("restaurantId", ASCENDING), ("sortOrder", ASCENDING)],
     )
 
+    await db.menu_items.create_index("id", unique=True)
     await db.menu_items.create_index("categoryId")
 
+    await db.orders.create_index("id", unique=True)
     await db.orders.create_index("userId")
     await db.orders.create_index("restaurantId")
+    await db.orders.create_index("createdAt")
     await db.orders.create_index([("userId", ASCENDING), ("createdAt", ASCENDING)])
     await db.orders.create_index("status")
 
+    await db.order_items.create_index("id", unique=True)
     await db.order_items.create_index("orderId")
     await db.order_items.create_index("menuItemId")
 
+    await db.reviews.create_index("id", unique=True)
     await db.reviews.create_index("orderId", unique=True)
     await db.reviews.create_index("userId")
     await db.reviews.create_index("restaurantId")
     await db.reviews.create_index([("restaurantId", ASCENDING), ("createdAt", ASCENDING)])
+
+    await ensure_tag_array_fields()
 
 
 async def ensure_search_indexes() -> None:

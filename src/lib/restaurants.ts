@@ -1,6 +1,10 @@
 import { DEMO_CITIES, type DemoCity } from "@/lib/cities";
 
-export function parseCuisineTags(raw: string): string[] {
+export function parseCuisineTags(raw: string | string[] | null | undefined): string[] {
+  if (!raw) return [];
+  if (Array.isArray(raw)) {
+    return raw.map(String).filter(Boolean);
+  }
   try {
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) {

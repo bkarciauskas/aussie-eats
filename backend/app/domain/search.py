@@ -2,25 +2,50 @@
 
 from __future__ import annotations
 
-import json
 import math
-from typing import Any, Callable, Optional, Sequence, TypeVar
+from typing import Any, Callable, Optional, Sequence, TypeVar, Union
 
 from app.domain.cities import DEMO_CITIES, DemoCity
+from app.domain.dietary import coerce_tag_list
 
 T = TypeVar("T")
 
+TagRaw = Union[str, list, None]
 
-def parse_cuisine_tags(raw: Optional[str]) -> list[str]:
+
+def parse_cuisine_tags(raw: TagRaw) -> list[str]:
+    if isinstance(raw, list):
+        return [str(tag) for tag in raw if isinstance(tag, str) and tag.strip()]
     if not raw:
         return []
-    try:
-        parsed = json.loads(raw)
-        if isinstance(parsed, list):
-            return [str(tag) for tag in parsed]
-    except (TypeError, json.JSONDecodeError):
-        pass
-    return [part.strip() for part in raw.split(",") if part.strip()]
+    coerced = coerce_tag_list(raw)
+    if coerced:
+        return coerced
+    if isinstance(raw, str):
+        return [part.strip() for part in raw.split(",") if part.strip()]
+    return []
+
+
+def restaurant_matches_query(restaurant: dict[str, Any], q: str) -> bool:
+    """True when every query token appears in name, suburb, city, or cuisine tags."""
+    query = q.strip().lower()
+    if not query:
+        return True
+
+    haystack = " ".join(
+        [
+            str(restaurant.get("name") or ""),
+            str(restaurant.get("suburb") or ""),
+            str(restaurant.get("city") or ""),
+            *parse_cuisine_tags(restaurant.get("cuisineTags")),
+        ]
+    ).lower()
+
+    if query in haystack:
+        return True
+
+    tokens = [token for token in query.split() if token]
+    return bool(tokens) and all(token in haystack for token in tokens)
 
 
 def _match_rank(label: str, query: str) -> float:

@@ -71,3 +71,26 @@ DEMO_CITIES: list[DemoCity] = [
         "lng": 147.3272,
     },
 ]
+
+
+def find_demo_city(id_or_label: str | None) -> DemoCity | None:
+    if not id_or_label:
+        return None
+    key = id_or_label.strip().lower()
+    for city in DEMO_CITIES:
+        if city["id"] == key or city["label"].lower() == key:
+            return city
+    return None
+
+
+def matches_restaurant_city(
+    restaurant_city: str,
+    city_filter: str | None,
+) -> bool:
+    """Unknown city values are ignored so stale URLs don't zero results."""
+    if not city_filter:
+        return True
+    wanted = find_demo_city(city_filter)
+    if wanted is None:
+        return True
+    return restaurant_city.lower() == wanted["label"].lower()
