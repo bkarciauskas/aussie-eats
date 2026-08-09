@@ -19,7 +19,7 @@ Verification recipes from the user's point of view. Each file is a complete proo
 
 Start with the feature that matches the change under test. `home-hero-search` is the default smoke proof for storefront search wiring.
 
-**Not mapped yet** (real routes — add when needed): `/signup`, cart-only, `/orders` list, post-delivery reviews, admin new/edit restaurant, diet/open-now filters.
+**Not mapped yet.** Add when needed: `/signup`, cart-only, `/orders` list, standalone `/restaurants/[slug]` detail/menu coverage, post-delivery reviews, admin new/edit restaurant, diet/open-now filters.
 
 ## Core smoke
 
