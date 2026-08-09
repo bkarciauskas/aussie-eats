@@ -50,6 +50,41 @@ def test_signup_rejects_duplicate_email(client, customer_user):
     assert response.status_code == 409
 
 
+def test_signup_upgrades_guest_and_preserves_user_id(client, fake_db):
+    guest = client.post(
+        "/auth/guest",
+        json={"name": "Alex Guest", "email": "alex.guest@example.com"},
+    )
+    assert guest.status_code == 201, guest.text
+    guest_id = guest.json()["user"]["id"]
+
+    signup = client.post(
+        "/auth/signup",
+        json={
+            "name": "Alex Account",
+            "email": "alex.guest@example.com",
+            "password": "secret12",
+        },
+    )
+    assert signup.status_code == 201, signup.text
+    body = signup.json()
+    assert body["user"]["id"] == guest_id
+    assert body["user"]["name"] == "Alex Account"
+    assert body["user"]["isGuest"] is False
+
+    stored = next(u for u in fake_db.users.docs if u["id"] == guest_id)
+    assert stored["isGuest"] is False
+    assert len(fake_db.users.docs) == 1
+
+    login = client.post(
+        "/auth/login",
+        json={"email": "alex.guest@example.com", "password": "secret12"},
+    )
+    assert login.status_code == 200
+    assert login.json()["user"]["id"] == guest_id
+    assert login.json()["user"]["isGuest"] is False
+
+
 def test_guest_session_creates_owner_and_places_order(
     client,
     seed_catalog,

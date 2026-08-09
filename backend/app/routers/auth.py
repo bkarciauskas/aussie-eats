@@ -46,28 +46,43 @@ async def signup(body: SignupRequest, db: DbDep, settings: SettingsDep) -> AuthR
     if len(body.password) < 6:
         raise HTTPException(status_code=400, detail="Password must be at least 6 characters.")
 
-    existing = await db.users.find_one({"email": email})
-    if existing:
+    existing = strip_mongo_id(await db.users.find_one({"email": email}))
+    if existing is not None and not existing.get("isGuest"):
         raise HTTPException(status_code=409, detail="An account with that email already exists.")
 
-    user_id = new_id()
-    now = datetime.now(timezone.utc)
-    doc = {
-        "id": user_id,
-        "email": email,
-        "passwordHash": hash_password(body.password),
-        "name": name,
-        "role": Role.CUSTOMER.value,
-        "isGuest": False,
-        "createdAt": now,
-    }
-    try:
-        await db.users.insert_one(doc)
-    except DuplicateKeyError as exc:
-        raise HTTPException(
-            status_code=409,
-            detail="An account with that email already exists.",
-        ) from exc
+    password_hash = hash_password(body.password)
+    if existing is not None:
+        # Upgrade guest identity in place so prior orders stay on this userId.
+        await db.users.update_one(
+            {"id": existing["id"]},
+            {
+                "$set": {
+                    "passwordHash": password_hash,
+                    "name": name,
+                    "isGuest": False,
+                }
+            },
+        )
+        doc = {**existing, "passwordHash": password_hash, "name": name, "isGuest": False}
+    else:
+        user_id = new_id()
+        now = datetime.now(timezone.utc)
+        doc = {
+            "id": user_id,
+            "email": email,
+            "passwordHash": password_hash,
+            "name": name,
+            "role": Role.CUSTOMER.value,
+            "isGuest": False,
+            "createdAt": now,
+        }
+        try:
+            await db.users.insert_one(doc)
+        except DuplicateKeyError as exc:
+            raise HTTPException(
+                status_code=409,
+                detail="An account with that email already exists.",
+            ) from exc
 
     user = _public_user(doc)
     token = create_access_token(
