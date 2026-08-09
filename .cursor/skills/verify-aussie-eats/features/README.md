@@ -7,10 +7,12 @@ Verification recipes from the user's point of view. Each file is a complete proo
 | Home hero search | [home-hero-search.md](./home-hero-search.md) | Storefront `/` → `/restaurants?q=…` |
 | Search suggestions | [search-suggestions.md](./search-suggestions.md) | Hero typeahead + recent searches |
 | Browse restaurants | [browse-restaurants.md](./browse-restaurants.md) | Storefront `/restaurants` |
+| Location-based browse | [location-based-browse.md](./location-based-browse.md) | `/restaurants` geolocation → distance sort |
 | Melbourne city browse | [melbourne-city-browse.md](./melbourne-city-browse.md) | Home city pin → `/restaurants?city=melbourne` |
 | Customer login | [customer-login.md](./customer-login.md) | Storefront `/login` |
 | Favourites | [favourites.md](./favourites.md) | Storefront `/restaurants` → `/favourites` |
 | Place order | [place-order.md](./place-order.md) | Cart → checkout → `/orders/:id` |
+| Wallet checkout | [wallet-checkout.md](./wallet-checkout.md) | Checkout wallet → `/orders/:id` |
 | Admin login + dashboard | [admin-login.md](./admin-login.md) | `/admin/login` → `/admin` |
 | Admin order status | [admin-order-status.md](./admin-order-status.md) | `/admin/orders` pending → preparing |
 | Admin menu edit | [admin-menu-edit.md](./admin-menu-edit.md) | `/admin/restaurants/…/menu` price edit |

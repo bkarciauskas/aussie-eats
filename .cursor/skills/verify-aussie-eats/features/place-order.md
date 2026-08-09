@@ -5,12 +5,12 @@ Add a menu item, check out with a mocked card payment, and land on the order det
 ## Sub-features
 
 - Client cart (`aussieeats_cart_v1`) then Server Action → FastAPI reprice.
-- Checkout payment methods; Card enables **Pay & place order**.
+- Card selection shows card fields and changes the submit label to **Pay & place order**.
 - Order detail shows `data-status="pending"` and card summary.
 
 ## How to get to it (user POV)
 
-`/restaurants/harbour-burger-co` → **Add** → **Cart** → **Checkout**.
+Sign in → `/restaurants/harbour-burger-co` → **Add** → **Cart** → **Checkout**.
 
 ## Driving it with drive.mjs
 

@@ -64,6 +64,8 @@ Stable handles (prefer these):
 | Admin login | `/admin/login` → same fields; `admin@aussieeats.local` / `admin1234` |
 | Add to cart | restaurant menu → button text `Add` |
 | Checkout | `/cart` → Checkout → `/checkout` → select Card → card fields → `Pay & place order` |
+| Location sort | `/restaurants` → button exact name `Use my location` |
+| Wallet checkout | `/checkout` → `input[value="apple_pay"]` / `input[value="google_pay"]` |
 | Admin order status | `/admin/orders` → `→ Preparing` (etc.) on pending rows |
 | Admin menu edit | `/admin/restaurants` → Menu → Edit → Save (`dialog[name="Edit menu item"]`) |
 

@@ -265,6 +265,43 @@ async function run() {
       if (!passed) {
         error = `assertions failed: hasCity=${hasCity} enoughRows=${enoughRows} hasHarbour=${hasHarbour} hasKnownMelbourneSeed=${hasKnownMelbourneSeed} rowCount=${rows.length} url=${url}`;
       }
+    } else if (feature === "location-based-browse") {
+      await page.context().grantPermissions(["geolocation"], { origin: baseUrl });
+      await page.context().setGeolocation({ latitude: -33.8688, longitude: 151.2093 });
+      await page.goto(baseUrl + "/", { waitUntil: "domcontentloaded" });
+      await page.locator('nav[aria-label="Primary"] a[href="/restaurants"]').click();
+      await page.waitForURL(/\/restaurants\/?$/);
+      const useLocation = page.getByRole("button", { name: "Use my location" });
+      await useLocation.waitFor({ state: "visible" });
+      await page.screenshot({ path: join(evidenceDir, "01-action-use-location.png") });
+      steps.push({ action: "opened restaurant directory and chose Use my location" });
+      await useLocation.click();
+      await page.waitForFunction(() => {
+        const params = new URLSearchParams(location.search);
+        return Boolean(params.get("lat") && params.get("lng") && params.get("place") === "My location");
+      });
+      await page.getByText("Sorted by distance from My location").waitFor({ timeout: 15000 });
+      const firstRow = page.locator("a.restaurant-row").first();
+      await firstRow.waitFor({ state: "visible", timeout: 20000 });
+      const firstRowText = (await firstRow.textContent()) || "";
+      const hasDistance = /\d+\.\d km/.test(firstRowText);
+      await page.screenshot({ path: join(evidenceDir, "02-result-distance-sort.png") });
+      const url = page.url();
+      const params = new URL(url).searchParams;
+      const hasLocation =
+        Boolean(params.get("lat")) &&
+        Boolean(params.get("lng")) &&
+        params.get("place") === "My location";
+      steps.push({
+        result: "sorted restaurant directory by browser location",
+        url,
+        hasLocation,
+        hasDistance,
+      });
+      passed = hasLocation && hasDistance;
+      if (!passed) {
+        error = `location browse assertions failed: hasLocation=${hasLocation} hasDistance=${hasDistance} url=${url}`;
+      }
     } else if (feature === "customer-login") {
       await page.goto(baseUrl + "/login", { waitUntil: "networkidle" });
       await page.locator('input[name="email"]').fill("demo@aussieeats.local");
@@ -402,6 +439,63 @@ async function run() {
       if (!passed) {
         error = `place-order assertions failed url=${orderUrl} hasPending=${hasPending} hasCard=${hasCard}`;
       }
+    } else if (feature === "wallet-checkout") {
+      await page.goto(baseUrl + "/login?next=/restaurants/harbour-burger-co", {
+        waitUntil: "networkidle",
+      });
+      await page.locator('input[name="email"]').fill("demo@aussieeats.local");
+      await page.locator('input[name="password"]').fill("demo1234");
+      await Promise.all([
+        page.waitForURL(/\/restaurants\/harbour-burger-co/),
+        page.getByRole("button", { name: /sign in/i }).click(),
+      ]);
+      await page.getByRole("button", { name: "Add", exact: true }).first().click();
+      await page.getByText(/Added ·/i).first().waitFor({ timeout: 5000 });
+      await page.goto(baseUrl + "/cart", { waitUntil: "networkidle" });
+      await page.getByRole("link", { name: /^Checkout$/i }).click();
+      await page.waitForURL(/\/checkout/);
+      await page.waitForLoadState("networkidle");
+
+      const applePay = page.locator('input[value="apple_pay"]');
+      const googlePay = page.locator('input[value="google_pay"]');
+      await applePay.waitFor({ state: "visible" });
+      await googlePay.waitFor({ state: "visible" });
+      await googlePay.check();
+      await applePay.check();
+      const cardFieldsHidden = (await page.getByText("Card number", { exact: true }).count()) === 0;
+      await page.screenshot({ path: join(evidenceDir, "01-action-apple-pay.png") });
+      steps.push({
+        action: "confirmed Apple Pay and Google Pay options, then selected Apple Pay",
+        cardFieldsHidden,
+      });
+
+      await Promise.all([
+        page.waitForURL(/\/orders\/[^/]+/),
+        page.getByRole("button", { name: /Pay & place order/i }).click(),
+      ]);
+      await page.waitForLoadState("networkidle");
+      const orderUrl = page.url();
+      const orderBody = await page.content();
+      const hasPending = /data-status="pending"/.test(orderBody);
+      const hasApplePay = /Payment:\s*Apple Pay/i.test(orderBody);
+      const hasPaidDemo = /Paid \(demo\)/i.test(orderBody);
+      await page.screenshot({ path: join(evidenceDir, "02-result-wallet-order.png") });
+      steps.push({
+        result: "placed order with Apple Pay",
+        orderUrl,
+        hasPending,
+        hasApplePay,
+        hasPaidDemo,
+      });
+      passed =
+        cardFieldsHidden &&
+        /\/orders\//.test(orderUrl) &&
+        hasPending &&
+        hasApplePay &&
+        hasPaidDemo;
+      if (!passed) {
+        error = `wallet checkout assertions failed: cardFieldsHidden=${cardFieldsHidden} hasPending=${hasPending} hasApplePay=${hasApplePay} hasPaidDemo=${hasPaidDemo} url=${orderUrl}`;
+      }
     } else if (feature === "admin-order-status") {
       await page.goto(baseUrl + "/admin/login", { waitUntil: "networkidle" });
       await page.locator('input[name="email"]').fill("admin@aussieeats.local");
@@ -410,7 +504,8 @@ async function run() {
         page.waitForURL(/\/admin\/?$/),
         page.getByRole("button", { name: /sign in/i }).click(),
       ]);
-      await page.goto(baseUrl + "/admin/orders", { waitUntil: "networkidle" });
+      await page.locator('nav[aria-label="Admin"] a[href="/admin/orders"]').click();
+      await page.waitForURL(/\/admin\/orders\/?$/);
       await page.getByRole("heading", { name: "Orders" }).waitFor();
 
       const pendingBefore = await page.locator('[data-status="pending"]').count();
@@ -457,7 +552,8 @@ async function run() {
         page.waitForURL(/\/admin\/?$/),
         page.getByRole("button", { name: /sign in/i }).click(),
       ]);
-      await page.goto(baseUrl + "/admin/restaurants", { waitUntil: "networkidle" });
+      await page.locator('nav[aria-label="Admin"] a[href="/admin/restaurants"]').click();
+      await page.waitForURL(/\/admin\/restaurants\/?$/);
       const harbourRow = page.locator("tr", { hasText: "Harbour Burger Co" }).first();
       await harbourRow.waitFor({ state: "visible", timeout: 15000 });
       await harbourRow.getByRole("link", { name: "Menu" }).click();

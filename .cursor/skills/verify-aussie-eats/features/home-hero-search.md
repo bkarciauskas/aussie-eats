@@ -6,7 +6,7 @@ From the landing hero, search restaurants/suburbs/cuisines and land on a filtere
 
 - Hero input enables after LocationProvider hydration.
 - Submit (Find or Enter) navigates to `/restaurants` with `q=…`.
-- Optional city pin may also append `lat` / `lng` / `place` / `city`.
+- An optional pin appends `lat` / `lng` / `place`; pin-only browse uses `city`.
 
 ## How to get to it (user POV)
 
