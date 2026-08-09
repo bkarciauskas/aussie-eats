@@ -26,6 +26,7 @@ export default async function OrderDetailPage({ params }: Props) {
   const address = parseDeliveryAddress(order.deliveryAddress);
   const canReview = order.status === OrderStatus.delivered && !order.review;
   const restaurantName = order.restaurant?.name ?? "Restaurant";
+  const isGuest = Boolean(session.isGuest);
 
   return (
     <div className="page-shell max-w-3xl">
@@ -47,6 +48,18 @@ export default async function OrderDetailPage({ params }: Props) {
           {ORDER_STATUS_LABELS[order.status as OrderStatus]}
         </span>
       </div>
+
+      {isGuest ? (
+        <div className="panel mt-6">
+          <p className="text-sm text-[var(--ae-ink-muted)]">
+            Guest order for {session.email}.{" "}
+            <Link href="/signup" className="text-[var(--ae-green)] underline">
+              Create an account
+            </Link>{" "}
+            to keep full order history.
+          </p>
+        </div>
+      ) : null}
 
       <div className="panel mt-8">
         <h2 className="font-display text-xl">Status</h2>

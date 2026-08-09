@@ -29,6 +29,7 @@ def create_access_token(
     email: str,
     name: str,
     role: Role | str,
+    is_guest: bool = False,
     settings: Optional[Settings] = None,
     expires_minutes: Optional[int] = None,
 ) -> str:
@@ -39,6 +40,7 @@ def create_access_token(
         "email": email,
         "name": name,
         "role": Role(role).value,
+        "isGuest": bool(is_guest),
         "exp": datetime.now(timezone.utc) + expire_delta,
     }
     return jwt.encode(payload, cfg.jwt_secret, algorithm=cfg.jwt_algorithm)
@@ -79,6 +81,7 @@ async def current_user(
         email=payload.email,
         name=payload.name,
         role=payload.role,
+        is_guest=bool(payload.is_guest),
     )
 
 

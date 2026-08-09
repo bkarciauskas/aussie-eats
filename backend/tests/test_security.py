@@ -48,6 +48,7 @@ def test_create_and_decode_access_token(settings: Settings):
     assert payload.email == "demo@aussieeats.local"
     assert payload.name == "Demo User"
     assert payload.role == Role.CUSTOMER
+    assert payload.is_guest is False
 
 
 def test_create_access_token_accepts_role_string(settings: Settings):

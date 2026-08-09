@@ -394,6 +394,50 @@ async function run() {
       if (!passed) {
         error = `place-order assertions failed url=${orderUrl} hasPending=${hasPending} hasCard=${hasCard}`;
       }
+    } else if (feature === "guest-checkout") {
+      // Stay logged out — guest checkout must not require demo@aussieeats.local.
+      await page.goto(baseUrl + "/restaurants/harbour-burger-co", {
+        waitUntil: "networkidle",
+      });
+      const addButtons = page.getByRole("button", { name: "Add", exact: true });
+      await addButtons.first().waitFor({ state: "visible", timeout: 15000 });
+      await addButtons.first().click();
+      await page.getByText(/Added ·/i).first().waitFor({ timeout: 5000 });
+      await page.screenshot({ path: join(evidenceDir, "01-action-add-to-cart.png"), fullPage: true });
+      steps.push({ action: "added menu item while anonymous" });
+
+      await page.goto(baseUrl + "/cart", { waitUntil: "networkidle" });
+      await page.getByRole("link", { name: /^Checkout$/i }).click();
+      await page.waitForURL(/\/checkout/);
+      await page.waitForLoadState("networkidle");
+
+      const guestEmail = `guest.${Date.now()}@example.com`;
+      await page.locator('input[name="guestName"]').fill("Alex Guest");
+      await page.locator('input[name="guestEmail"]').fill(guestEmail);
+      await page.locator('input[value="card"]').check();
+      await page.getByPlaceholder("4242 4242 4242 4242").fill("4242 4242 4242 4242");
+      await page.getByPlaceholder("Taylor Smith").fill("Alex Guest");
+      await page.locator('input[autocomplete="cc-exp"]').fill("12/30");
+      await page.locator('input[autocomplete="cc-csc"]').fill("123");
+      await page.screenshot({ path: join(evidenceDir, "02-action-guest-checkout.png"), fullPage: true });
+      steps.push({ action: "filled guest checkout with name, email, and demo card", guestEmail });
+
+      await Promise.all([
+        page.waitForURL(/\/orders\/[^/]+/),
+        page.getByRole("button", { name: /Pay & place order/i }).click(),
+      ]);
+      await page.waitForLoadState("networkidle");
+      const orderUrl = page.url();
+      const orderBody = await page.content();
+      const hasPending = /data-status="pending"/.test(orderBody);
+      const hasGuestCopy = /Guest order|full order history/i.test(orderBody);
+      const hasCard = /Visa ending 4242|Card · Visa/i.test(orderBody);
+      await page.screenshot({ path: join(evidenceDir, "03-result-guest-order.png"), fullPage: true });
+      steps.push({ result: "guest order placed", orderUrl, hasPending, hasGuestCopy, hasCard });
+      passed = /\/orders\//.test(orderUrl) && hasPending && hasGuestCopy && hasCard;
+      if (!passed) {
+        error = `guest-checkout assertions failed url=${orderUrl} hasPending=${hasPending} hasGuestCopy=${hasGuestCopy} hasCard=${hasCard}`;
+      }
     } else if (feature === "admin-order-status") {
       await page.goto(baseUrl + "/admin/login", { waitUntil: "networkidle" });
       await page.locator('input[name="email"]').fill("admin@aussieeats.local");

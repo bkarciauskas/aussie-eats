@@ -9,7 +9,18 @@ export default async function CheckoutPage() {
   return (
     <div className="page-shell">
       <h1 className="mb-6 font-display text-4xl text-[var(--ae-green)]">Checkout</h1>
-      <CheckoutForm isLoggedIn={!!session.isLoggedIn} />
+      <CheckoutForm
+        isLoggedIn={!!session.isLoggedIn}
+        isGuest={!!session.isGuest}
+        defaultContact={
+          session.isLoggedIn
+            ? {
+                name: session.name || "",
+                email: session.email || "",
+              }
+            : undefined
+        }
+      />
     </div>
   );
 }

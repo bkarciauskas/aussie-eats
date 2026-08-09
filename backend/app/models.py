@@ -28,6 +28,7 @@ class User(MongoModel):
     password_hash: str = Field(alias="passwordHash")
     name: str
     role: Role = Role.CUSTOMER
+    is_guest: bool = Field(default=False, alias="isGuest")
     created_at: datetime = Field(alias="createdAt")
 
 
@@ -36,6 +37,7 @@ class UserPublic(MongoModel):
     email: str
     name: str
     role: Role
+    is_guest: bool = Field(default=False, alias="isGuest")
 
 
 class Address(MongoModel):
@@ -145,4 +147,5 @@ class TokenPayload(MongoModel):
     email: str
     name: str
     role: Role
+    is_guest: bool = Field(default=False, alias="isGuest")
     exp: Optional[int] = None

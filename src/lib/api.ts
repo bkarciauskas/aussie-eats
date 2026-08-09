@@ -24,6 +24,7 @@ export const userPublicSchema = z.object({
   email: z.string().min(1),
   name: z.string(),
   role: z.enum([Role.CUSTOMER, Role.ADMIN]),
+  isGuest: z.boolean().optional().default(false),
 });
 
 export type UserPublic = z.infer<typeof userPublicSchema>;
