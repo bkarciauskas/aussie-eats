@@ -112,12 +112,20 @@ async function run() {
         error = `assertions failed: hasQ=${hasQ} hasHeading=${hasHeading > 0} hasHarbour=${hasHarbour} url=${url}`;
       }
     } else if (feature === "browse-restaurants") {
-      await page.goto(baseUrl + "/restaurants", { waitUntil: "networkidle" });
-      await page.screenshot({ path: join(evidenceDir, "01-restaurants.png"), fullPage: true });
+      await page.goto(baseUrl + "/", { waitUntil: "domcontentloaded" });
+      const restaurantsLink = page.locator('nav[aria-label="Primary"] a[href="/restaurants"]');
+      await restaurantsLink.waitFor({ state: "visible" });
+      await page.screenshot({ path: join(evidenceDir, "01-action-restaurants-nav.png") });
+      steps.push({ action: "opened home with Restaurants navigation visible" });
+      await restaurantsLink.click();
+      await page.waitForURL(/\/restaurants\/?$/);
+      await page.getByRole("heading", { name: "Restaurants" }).waitFor({ timeout: 15000 });
+      await page.locator("a.restaurant-row").first().waitFor({ state: "visible", timeout: 20000 });
+      await page.screenshot({ path: join(evidenceDir, "02-result-restaurants.png") });
       const body = await page.content();
       const hasHeading = /Restaurants/i.test(body);
       const hasRow = await page.locator("a.restaurant-row").count();
-      steps.push({ url: page.url(), hasHeading, restaurantRows: hasRow });
+      steps.push({ result: "opened restaurant directory", url: page.url(), hasHeading, restaurantRows: hasRow });
       passed = hasHeading && hasRow > 0;
       if (!passed) error = `assertions failed: hasHeading=${hasHeading} rows=${hasRow}`;
     } else if (feature === "search-suggestions") {
