@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import re
 from typing import Any, Optional
 
 
@@ -12,6 +13,12 @@ def _match(doc: dict[str, Any], query: dict[str, Any]) -> bool:
         if isinstance(expected, dict):
             if "$in" in expected:
                 if actual not in expected["$in"]:
+                    return False
+            elif "$regex" in expected:
+                flags = re.IGNORECASE if "i" in str(expected.get("$options", "")) else 0
+                if not isinstance(actual, str) or re.search(
+                    str(expected["$regex"]), actual, flags
+                ) is None:
                     return False
             else:
                 return False

@@ -90,6 +90,42 @@ def test_restaurants_list_filters_city_cuisine_q_diet(client, seed_catalog, fake
     assert [r["slug"] for r in by_diet.json()["restaurants"]] == ["melbourne-ramen"]
 
 
+def test_restaurants_list_city_filter_is_case_insensitive(client, fake_db):
+    now = datetime.now(timezone.utc)
+    fake_db.restaurants.docs.append(
+        {
+            "id": "rest_melb_lower",
+            "name": "Lowercase City Ramen",
+            "slug": "lowercase-city-ramen",
+            "description": "Tonkotsu",
+            "image": "/images/restaurants/ramen.jpg",
+            "cuisineTags": '["Ramen"]',
+            "dietaryTags": "[]",
+            "city": "melbourne",
+            "suburb": "CBD",
+            "lat": -37.81,
+            "lng": 144.96,
+            "deliveryFeeCents": 499,
+            "minOrderCents": 1500,
+            "isOpen": True,
+            "isActive": True,
+            "rating": 4.6,
+            "placeId": None,
+            "userRatingCount": 10,
+            "openingHoursJson": None,
+            "phone": None,
+            "createdAt": now,
+            "updatedAt": now,
+        }
+    )
+
+    response = client.get("/restaurants?city=melbourne")
+    assert response.status_code == 200
+    assert [r["slug"] for r in response.json()["restaurants"]] == [
+        "lowercase-city-ramen"
+    ]
+
+
 def test_dietary_catalog_returns_lean_menu_tags(client, seed_catalog):
     response = client.get("/restaurants/dietary-catalog")
     assert response.status_code == 200

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from collections import defaultdict
 from typing import Optional
 
@@ -85,7 +86,11 @@ async def list_restaurants(
     query: dict = {"isActive": True} if active_only else {}
     wanted_city = find_demo_city(city)
     if wanted_city is not None:
-        query["city"] = wanted_city["label"]
+        # Case-insensitive: admin/legacy rows may store non-canonical casing.
+        query["city"] = {
+            "$regex": f"^{re.escape(wanted_city['label'])}$",
+            "$options": "i",
+        }
 
     scoped: list[dict] = []
     cursor = db.restaurants.find(query).sort([("rating", -1), ("name", 1)])
