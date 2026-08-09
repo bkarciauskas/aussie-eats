@@ -11,7 +11,7 @@ Project-local control skill for the AussieEats multi-vendor food delivery demo (
 
 Primary: **web UI** at `http://127.0.0.1:$PORT` (default verify port **3010**).
 
-Also required: **FastAPI** at `http://127.0.0.1:$API_PORT` (default **8000**), health `GET /health` → `{"status":"ok"}`. Demo auth is iron-session (cookie) holding a FastAPI JWT; catalog/orders live in Mongo.
+Also required: **FastAPI** at `http://127.0.0.1:$API_PORT` (default **8000**), health `GET /health` → `{"status":"ok"}`. Demo auth is iron-session (cookie) holding a FastAPI JWT; catalog/orders live in Mongo (often hundreds of venues from `catalog_snapshot.json` after `db:seed`).
 
 ## Launch
 
@@ -53,18 +53,21 @@ Stable handles (prefer these):
 | Control | Selector / route |
 | --- | --- |
 | Brand home | `a[aria-label="AussieEats home"]` |
-| Hero search input | `#restaurant-search-hero` |
+| Hero search input | `#restaurant-search-hero` (wait until not `disabled` — LocationProvider hydration) |
 | Hero Find | `form.hero-search button[type="submit"]` |
+| Hero suggestions listbox | `#restaurant-search-hero-suggestions` (`role="listbox"`) |
 | Header search | `#restaurant-search-header` |
 | Restaurants nav | `nav[aria-label="Primary"] a[href="/restaurants"]` |
-| Customer login | `/login` → `input[name="email"]`, `input[name="password"]`, button `Sign in` |
-| Admin login | `/admin/login` → same fields; demo `admin@aussieeats.local` / `admin1234` |
+| Restaurant card link | `a.restaurant-row` |
+| City pin (home) | button exact name `Melbourne` (etc.) → link `Browse Melbourne restaurants` |
+| Customer login | `/login` → `input[name="email"]`, `input[name="password"]`, button `Sign in` (`demo@aussieeats.local` / `demo1234`) |
+| Admin login | `/admin/login` → same fields; `admin@aussieeats.local` / `admin1234` |
 | Add to cart | restaurant menu → button text `Add` |
-| Checkout | `/cart` → Checkout → `/checkout` → card fields → `Pay & place order` |
+| Checkout | `/cart` → Checkout → `/checkout` → select Card → card fields → `Pay & place order` |
 | Admin order status | `/admin/orders` → `→ Preparing` (etc.) on pending rows |
-| Admin menu edit | `/admin/restaurants` → Menu → Edit → Save |
+| Admin menu edit | `/admin/restaurants` → Menu → Edit → Save (`dialog[name="Edit menu item"]`) |
 
-Feature recipes live in `features/`. Pick the file that matches the change; do not invent a shorter path that skips user-visible steps listed there.
+Feature recipes live in `features/`. Pick the file that matches the change; do not invent a shorter path that skips user-visible steps listed there. Seed landmark: **Harbour Burger Co** (`harbour-burger-co`) is **Sydney**, not Melbourne.
 
 ## Evidence
 

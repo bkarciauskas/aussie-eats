@@ -1,34 +1,33 @@
 # Search suggestions and recent searches
 
-## What
+Hero typeahead for restaurants, cuisines, suburbs, and cities; completed searches reappear as recent searches.
 
-From the landing hero, find restaurants, cuisines, suburbs, and cities with
-typeahead suggestions. Completed searches are available again as recent
-searches.
+## Sub-features
 
-## Reach
+- Debounced fetch to `/api/search/suggest` (~200ms).
+- Kind labels: **Restaurant**, **Cuisine**, **City**, **Suburb**, **Recent**.
+- Cuisine suggestion navigates to `/restaurants?cuisine=…` (location params may append).
+- Restaurant suggestion navigates to `/restaurants/{slug}`.
+- Empty-focus shows **Recent searches** with **Clear**.
 
-1. Open `/`
-2. Wait until `#restaurant-search-hero` is enabled
+## How to get to it (user POV)
 
-## Drive
+1. Open `/`.
+2. Wait until `#restaurant-search-hero` is enabled.
+3. Type into the hero search (or focus empty after prior searches).
 
-1. Focus `#restaurant-search-hero`, fill it with `burger`, and wait for the
-   suggestions list.
-2. Confirm **Harbour Burger Co** appears with the **Restaurant** label.
-3. Clear the input, fill it with `bur`, and select **Burgers** with the
-   **Cuisine** label.
-4. Confirm navigation to `/restaurants` with `cuisine=Burgers`.
-5. Return to `/`, focus the empty hero input, and confirm **Burgers** appears
-   under **Recent searches**.
-6. Select **Clear** and confirm the recent-search panel closes.
+## Driving it with drive.mjs
 
-## Proof
+```bash
+.cursor/skills/verify-aussie-eats/helpers/drive.mjs search-suggestions
+```
 
-- A screenshot or recording shows the `burger` suggestion list containing
-  **Harbour Burger Co**
-- Selecting **Burgers** navigates to `/restaurants?cuisine=Burgers`
-- Returning home and focusing the empty search shows **Burgers** under
-  **Recent searches**
-- Clearing recents removes the list
-- `proof.json` records the URLs and visible assertions with `passed: true`
+- Type `burger` → assert listbox shows **Harbour Burger Co** with **Restaurant**.
+- Clear, type `bur` → select **Burgers** / **Cuisine** → URL includes `cuisine=Burgers`.
+- Return home, focus empty input → **Burgers** under **Recent searches** → **Clear** hides the list.
+
+## Gotchas
+
+- Wait for `#restaurant-search-hero-suggestions` after the debounce; do not assert on a fixed sleep alone.
+- Selecting a restaurant suggestion goes to the detail slug, not the directory list.
+- Header search (`#restaurant-search-header`) shares the same component; this proof drives the hero.

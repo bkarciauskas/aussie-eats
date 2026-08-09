@@ -1,22 +1,28 @@
 # Favourites
 
-## Goal
+Signed-in customer saves a restaurant from browse, sees it on `/favourites` after reload, then cleans up.
 
-Prove a signed-in customer can save a restaurant from browse, find it on `/favourites`, and keep it after a reload.
+## Sub-features
 
-## Steps
+- Heart button on restaurant cards (`aria-pressed`, Save/Remove labels).
+- `/favourites` list for the signed-in user.
+- Toggle persists in Mongo via FastAPI.
 
-1. Sign in at `/login?next=/restaurants` with the demo customer.
-2. On `/restaurants`, locate the first restaurant card and ensure its heart is not selected.
-3. Capture the browse list with the unselected heart.
-4. Select the heart and verify its accessible pressed state changes to `true`.
-5. Open **Favourites** from the primary navigation.
-6. Reload `/favourites`.
-7. Verify the saved restaurant card remains visible and capture the result.
-8. Remove the restaurant to leave the demo account clean.
+## How to get to it (user POV)
 
-## Pass criteria
+Sign in → `/restaurants` → heart a card → nav **Favourites**.
 
-- The heart saves without opening the restaurant detail page.
-- `/favourites` contains the same restaurant.
-- The save persists after a page reload.
+## Driving it with drive.mjs
+
+```bash
+.cursor/skills/verify-aussie-eats/helpers/drive.mjs favourites
+```
+
+- Login with `next=/restaurants`.
+- Ensure first card heart is unpressed, then Save.
+- Open Favourites, reload, assert the name remains, then Remove to leave the demo account clean.
+
+## Gotchas
+
+- First card is non-deterministic in a large catalog — capture the name before navigating away.
+- Unauthenticated heart flows redirect to login.

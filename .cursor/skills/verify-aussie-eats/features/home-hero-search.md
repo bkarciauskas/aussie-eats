@@ -1,29 +1,30 @@
 # Home hero search
 
-## What
-
 From the landing hero, search restaurants/suburbs/cuisines and land on a filtered restaurants list.
 
-## Reach
+## Sub-features
 
-1. Open `/`
-2. Wait until `#restaurant-search-hero` is enabled (location provider hydrated)
+- Hero input enables after LocationProvider hydration.
+- Submit (Find or Enter) navigates to `/restaurants` with `q=…`.
+- Optional city pin may also append `lat` / `lng` / `place` / `city`.
 
-## Drive
+## How to get to it (user POV)
+
+1. Open `/`.
+2. Wait until `#restaurant-search-hero` is enabled.
+3. Type a query and choose **Find** (or press Enter).
+
+## Driving it with drive.mjs
 
 ```bash
 .cursor/skills/verify-aussie-eats/helpers/drive.mjs home-hero-search
 ```
 
-Manual equivalent:
+- Fill `#restaurant-search-hero` with `burger`, submit.
+- Assert URL includes `q=burger`, heading **Restaurants**, and **Harbour Burger Co** (Sydney seed) in the page.
 
-1. Fill `#restaurant-search-hero` with `burger`
-2. Click `form.hero-search button[type="submit"]` (label **Find**)
-3. Wait for navigation to `/restaurants` with `q=burger` (city may also appear if a demo pin is set)
+## Gotchas
 
-## Proof
-
-- URL matches `/restaurants` and query includes `q=burger` (case-insensitive)
-- Page shows heading **Restaurants**
-- At least one result includes **Harbour Burger Co** (seed data)
-- Evidence dir has before/after screenshots + `proof.json` with `passed: true`
+- Do not submit before hydration — input/button stay `disabled` until then.
+- Harbour Burger Co is Sydney (`harbour-burger-co`); it matches `q=burger`, not `city=melbourne`.
+- Soft navigation can paint the Restaurants heading before rows arrive — wait for `a.restaurant-row` (e.g. Harbour Burger Co), not only `h1`.

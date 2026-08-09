@@ -1,31 +1,28 @@
 # Admin menu edit
 
-## What
+Edit a Harbour Burger Co menu item price and confirm it persists after reload.
 
-Sign in as admin, open a restaurant menu, edit an item price, and confirm it persists.
+## Sub-features
 
-## Reach
+- Admin restaurants list → **Menu** link.
+- Edit dialog (`aria-label="Edit menu item"`) with `input[name="price"]` in dollars.
+- Save writes cents to Mongo via FastAPI.
 
-`/admin/login` → `/admin/restaurants` → **Menu** on Harbour Burger Co.
+## How to get to it (user POV)
 
-## Drive
+`/admin/login` → **Restaurants** → Harbour Burger Co **Menu** → **Edit** → **Save**.
+
+## Driving it with drive.mjs
 
 ```bash
 .cursor/skills/verify-aussie-eats/helpers/drive.mjs admin-menu-edit
 ```
 
-Manual equivalent:
+- Open Harbour Burger Co menu, bump first item price by $0.50, Save, reload.
+- Assert first line shows the new `$x.xx` price.
 
-1. Open `/admin/login`
-2. Submit `admin@aussieeats.local` / `admin1234`
-3. Open **Restaurants** → Harbour Burger Co → **Menu**
-4. Click **Edit** on the first item
-5. Bump price by $0.50 → **Save**
-6. Reload and confirm the new price is shown
+## Gotchas
 
-## Proof
-
-- Edit dialog closes after save
-- Reloaded menu list shows the updated `$*` price on the first item
-
-Mutates shared demo DB (price bump of $0.50 on first Harbour Burger item).
+- Dialog accessible name is **Edit menu item** (aria); visible heading may say **Edit item**.
+- Repeated runs keep bumping the shared price — that is expected.
+- Never pass dollars into client `unitPriceCents` elsewhere; admin form converts dollars → cents.

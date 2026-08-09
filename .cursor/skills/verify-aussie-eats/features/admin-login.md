@@ -1,27 +1,26 @@
 # Admin login + dashboard
 
-## What
+Sign in as admin and reach the dashboard with Admin nav.
 
-Sign in as admin and reach the dashboard counts / orders tools.
+## Sub-features
 
-## Reach
+- `/admin/login` separate from storefront login.
+- Dashboard counts from FastAPI admin summary.
+- Admin nav: Dashboard, Restaurants, Orders.
 
-`/admin/login` (storefront session is separate).
+## How to get to it (user POV)
 
-## Drive
+Open `/admin/login` (or `/admin` when unauthenticated).
+
+## Driving it with drive.mjs
 
 ```bash
 .cursor/skills/verify-aussie-eats/helpers/drive.mjs admin-login
 ```
 
-Manual equivalent:
+- Submit `admin@aussieeats.local` / `admin1234`.
+- Assert URL `/admin`, Admin nav links to `/admin/orders` and `/admin/restaurants`, and Restaurants copy on the page.
 
-1. Open `/admin/login`
-2. Submit `admin@aussieeats.local` / `admin1234`
-3. Land on `/admin`
+## Gotchas
 
-## Proof
-
-- URL is `/admin` (not bounced to login)
-- Dashboard shows restaurant/order counts (seeded non-zero)
-- Admin nav includes **Orders** and **Restaurants**
+- Admin JWT role required — customer demo login will not unlock `/admin`.

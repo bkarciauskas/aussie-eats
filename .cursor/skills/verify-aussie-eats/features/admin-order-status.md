@@ -1,30 +1,28 @@
 # Admin order status
 
-## What
+Advance an order from **pending** → **preparing** in the admin Orders table.
 
-Sign in as admin and advance an order from **pending** → **preparing**.
+## Sub-features
 
-## Reach
+- Status pills with `data-status`.
+- Allowed transition buttons (`→ Preparing`, etc.).
+- Server Action + FastAPI PATCH; history appends.
 
-`/admin/login` → `/admin/orders`.
+## How to get to it (user POV)
 
-## Drive
+`/admin/login` → **Orders** → pending row → **→ Preparing**.
+
+## Driving it with drive.mjs
 
 ```bash
 .cursor/skills/verify-aussie-eats/helpers/drive.mjs admin-order-status
 ```
 
-Manual equivalent:
+- Login as admin, open `/admin/orders`.
+- Click **→ Preparing** on a pending row; assert pending count decreases and preparing increases.
 
-1. Open `/admin/login`
-2. Submit `admin@aussieeats.local` / `admin1234`
-3. Open **Orders**
-4. On a row with status **Pending**, click **→ Preparing**
-5. Confirm the status pill shows **Preparing**
+## Gotchas
 
-## Proof
-
-- At least one order row shows `data-status="preparing"` after the click
-- Invalid skips (e.g. pending → delivered) stay blocked by the API (covered by backend pytest)
-
-Mutates shared demo DB — prefer placing a fresh order first when the queue has no pending rows.
+- There is **no** status filter on the orders page — wait on DOM status counts after revalidate.
+- If no pending rows exist, run `place-order` first (or seed with `FORCE_SEED_ORDERS=1`).
+- Mutates shared demo DB.

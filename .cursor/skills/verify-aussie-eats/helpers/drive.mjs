@@ -91,13 +91,15 @@ async function run() {
       await page.waitForFunction(() => location.pathname.startsWith("/restaurants"), null, {
         timeout: 15000,
       });
-      await page.waitForSelector("h1", { timeout: 15000 });
+      await page.getByRole("heading", { name: "Restaurants" }).waitFor({ timeout: 15000 });
+      // Soft App Router navigation can paint the shell before RSC rows arrive.
+      const harbourRow = page.locator("a.restaurant-row").filter({ hasText: /Harbour Burger Co/i });
+      await harbourRow.first().waitFor({ state: "visible", timeout: 20000 });
       await page.screenshot({ path: join(evidenceDir, "02-result-restaurants.png"), fullPage: true });
       const url = page.url();
-      const body = await page.content();
       const hasQ = /[?&]q=burger/i.test(url);
       const hasHeading = await page.getByRole("heading", { name: "Restaurants" }).count();
-      const hasHarbour = /Harbour Burger Co/i.test(body);
+      const hasHarbour = (await harbourRow.count()) > 0;
       steps.push({
         result: "navigated to restaurants",
         url,
@@ -118,6 +120,88 @@ async function run() {
       steps.push({ url: page.url(), hasHeading, restaurantRows: hasRow });
       passed = hasHeading && hasRow > 0;
       if (!passed) error = `assertions failed: hasHeading=${hasHeading} rows=${hasRow}`;
+    } else if (feature === "search-suggestions") {
+      await page.goto(baseUrl + "/", { waitUntil: "domcontentloaded" });
+      const input = page.locator("#restaurant-search-hero");
+      await input.waitFor({ state: "visible" });
+      await page.waitForFunction(() => {
+        const el = document.querySelector("#restaurant-search-hero");
+        return el instanceof HTMLInputElement && !el.disabled;
+      });
+      await input.click();
+      await input.fill("burger");
+      const listbox = page.locator("#restaurant-search-hero-suggestions");
+      await listbox.waitFor({ state: "visible", timeout: 15000 });
+      const harbourOption = listbox.getByRole("option").filter({ hasText: /Harbour Burger Co/i });
+      await harbourOption.waitFor({ state: "visible", timeout: 15000 });
+      const harbourKind = await harbourOption.locator(".search-suggest-kind").textContent();
+      await page.screenshot({
+        path: join(evidenceDir, "01-action-burger-suggestions.png"),
+        fullPage: true,
+      });
+      steps.push({
+        action: "typed burger; Harbour Burger Co restaurant suggestion visible",
+        harbourKind: harbourKind?.trim() || null,
+      });
+
+      await input.fill("");
+      await input.fill("bur");
+      // Option text includes the kind label ("Burgers" + "Cuisine"), so match via strong.
+      const cuisineOption = listbox.getByRole("option").filter({
+        has: page.locator("strong", { hasText: /^Burgers$/i }),
+      }).filter({
+        has: page.locator(".search-suggest-kind", { hasText: /^Cuisine$/i }),
+      });
+      await cuisineOption.first().waitFor({ state: "visible", timeout: 15000 });
+      await cuisineOption.first().locator("button").click();
+      await page.waitForFunction(() => location.pathname.startsWith("/restaurants"), null, {
+        timeout: 15000,
+      });
+      await page.waitForSelector("h1", { timeout: 15000 });
+      const cuisineUrl = page.url();
+      const hasCuisine = /[?&]cuisine=Burgers\b/i.test(cuisineUrl);
+      await page.screenshot({
+        path: join(evidenceDir, "02-result-cuisine-filter.png"),
+        fullPage: true,
+      });
+      steps.push({ result: "selected Burgers cuisine suggestion", cuisineUrl, hasCuisine });
+
+      await page.goto(baseUrl + "/", { waitUntil: "domcontentloaded" });
+      await page.waitForFunction(() => {
+        const el = document.querySelector("#restaurant-search-hero");
+        return el instanceof HTMLInputElement && !el.disabled;
+      });
+      const homeInput = page.locator("#restaurant-search-hero");
+      await homeInput.click();
+      await homeInput.fill("");
+      await page.getByText("Recent searches").waitFor({ state: "visible", timeout: 10000 });
+      const recentBurgers = page
+        .locator("#restaurant-search-hero-suggestions")
+        .getByRole("option")
+        .filter({ has: page.locator("strong", { hasText: /^Burgers$/i }) });
+      await recentBurgers.first().waitFor({ state: "visible", timeout: 10000 });
+      await page.screenshot({
+        path: join(evidenceDir, "03-action-recent-searches.png"),
+        fullPage: true,
+      });
+      steps.push({ action: "focused empty hero; Burgers under Recent searches" });
+
+      await page
+        .locator(".search-suggest-heading")
+        .getByRole("button", { name: /^Clear$/i })
+        .click();
+      await page.locator("#restaurant-search-hero-suggestions").waitFor({ state: "hidden", timeout: 10000 });
+      await page.screenshot({
+        path: join(evidenceDir, "04-result-recents-cleared.png"),
+        fullPage: true,
+      });
+      const listboxGone = (await page.locator("#restaurant-search-hero-suggestions").count()) === 0;
+      steps.push({ result: "cleared recent searches", listboxGone });
+      passed =
+        /Restaurant/i.test(harbourKind || "") && hasCuisine && listboxGone;
+      if (!passed) {
+        error = `search-suggestions assertions failed: harbourKind=${harbourKind} hasCuisine=${hasCuisine} listboxGone=${listboxGone} cuisineUrl=${cuisineUrl}`;
+      }
     } else if (feature === "melbourne-city-browse") {
       await page.goto(baseUrl + "/", { waitUntil: "domcontentloaded" });
       await page.waitForFunction(() => {
@@ -152,20 +236,26 @@ async function run() {
       const url = page.url();
       const rows = await page.locator("a.restaurant-row h2").allTextContents();
       const hasCity = /[?&]city=melbourne\b/i.test(url);
+      // Harbour Burger Co is Sydney — must not appear under city=melbourne.
       const hasHarbour = rows.some((r) => /Harbour Burger/i.test(r));
-      const melbourneOnly =
-        rows.length === 3 && rows.every((r) => /Fitzroy|Carlton|South Yarra/i.test(r));
+      // Snapshot restore has ~100+ Melbourne venues; handwritten seed has 3. Require ≥3.
+      const enoughRows = rows.length >= 3;
+      const hasKnownMelbourneSeed = rows.some((r) =>
+        /Fitzroy Smash|Carlton Nonna|South Yarra Sushi/i.test(r),
+      );
       steps.push({
         result: "browsed Melbourne restaurants",
         url,
-        rows,
+        rowCount: rows.length,
+        sampleRows: rows.slice(0, 8),
         hasCity,
         hasHarbour,
-        melbourneOnly,
+        enoughRows,
+        hasKnownMelbourneSeed,
       });
-      passed = hasCity && melbourneOnly && !hasHarbour;
+      passed = hasCity && enoughRows && !hasHarbour && hasKnownMelbourneSeed;
       if (!passed) {
-        error = `assertions failed: hasCity=${hasCity} melbourneOnly=${melbourneOnly} hasHarbour=${hasHarbour} rows=${JSON.stringify(rows)} url=${url}`;
+        error = `assertions failed: hasCity=${hasCity} enoughRows=${enoughRows} hasHarbour=${hasHarbour} hasKnownMelbourneSeed=${hasKnownMelbourneSeed} rowCount=${rows.length} url=${url}`;
       }
     } else if (feature === "customer-login") {
       await page.goto(baseUrl + "/login", { waitUntil: "networkidle" });
@@ -243,9 +333,20 @@ async function run() {
       await page.screenshot({ path: join(evidenceDir, "02-admin-dashboard.png"), fullPage: true });
       const url = page.url();
       const navOrders = await page.locator('nav[aria-label="Admin"] a[href="/admin/orders"]').count();
-      steps.push({ url, navOrders });
-      passed = /\/admin\/?$/.test(new URL(url).pathname) && navOrders > 0;
-      if (!passed) error = `admin dashboard assertions failed url=${url}`;
+      const navRestaurants = await page
+        .locator('nav[aria-label="Admin"] a[href="/admin/restaurants"]')
+        .count();
+      const body = await page.content();
+      const hasRestaurantLabel = /Restaurants/i.test(body);
+      steps.push({ url, navOrders, navRestaurants, hasRestaurantLabel });
+      passed =
+        /\/admin\/?$/.test(new URL(url).pathname) &&
+        navOrders > 0 &&
+        navRestaurants > 0 &&
+        hasRestaurantLabel;
+      if (!passed) {
+        error = `admin dashboard assertions failed url=${url} navOrders=${navOrders} navRestaurants=${navRestaurants}`;
+      }
     } else if (feature === "place-order") {
       await page.goto(baseUrl + "/login?next=/restaurants/harbour-burger-co", {
         waitUntil: "networkidle",
@@ -315,7 +416,7 @@ async function run() {
       steps.push({ action: "opened admin orders with pending row", pendingBefore, preparingBefore });
 
       await pendingRow.getByRole("button", { name: /→ Preparing/i }).click();
-      // Row leaves the pending filter once status updates — wait on page-level counts.
+      // Orders page has no status filter; wait on page-level status pill counts after revalidate.
       await page.waitForFunction(
         ({ pendingBefore: p0, preparingBefore: r0 }) => {
           const pending = document.querySelectorAll('[data-status="pending"]').length;

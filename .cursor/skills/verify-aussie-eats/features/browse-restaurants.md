@@ -1,27 +1,28 @@
 # Browse restaurants
 
-## What
+Unauthenticated directory browse with optional city/cuisine/diet filters.
 
-Unauthenticated browse of the restaurant directory with optional city/cuisine filters.
+## Sub-features
 
-## Reach
+- List of `a.restaurant-row` cards from FastAPI/Mongo.
+- City / cuisine / open-now / diet filters on the restaurants page.
+- Map pins reuse the same filtered list (no separate query).
+
+## How to get to it (user POV)
 
 Nav **Restaurants** → `/restaurants`, or open `/restaurants` directly.
 
-## Drive
+## Driving it with drive.mjs
 
 ```bash
 .cursor/skills/verify-aussie-eats/helpers/drive.mjs browse-restaurants
 ```
 
-Manual equivalent:
+- Open `/restaurants`.
+- Assert heading **Restaurants** and at least one `a.restaurant-row`.
+- Optional manual: set City to **Sydney** and confirm filtered results.
 
-1. Open `/restaurants`
-2. Confirm list renders (not the empty-state panel)
-3. Optional: set City filter to `Sydney` via the filters form and submit
+## Gotchas
 
-## Proof
-
-- Heading **Restaurants** visible
-- At least one `a.restaurant-row` present
-- Seed restaurants from multiple cities appear when no city filter is set (e.g. Sydney + Melbourne names in HTML)
+- After snapshot seed the list is large (hundreds of venues) with no pagination — assert presence, not exact counts.
+- Empty catalog usually means `db:seed` was skipped or Mongo is unreachable.
