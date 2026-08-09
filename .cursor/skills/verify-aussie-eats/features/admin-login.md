@@ -5,7 +5,7 @@ Sign in as admin and reach the dashboard with Admin nav.
 ## Sub-features
 
 - `/admin/login` separate from storefront login.
-- Dashboard counts from FastAPI admin summary.
+- Dashboard counts from FastAPI `GET /admin/dashboard`.
 - Admin nav: Dashboard, Restaurants, Orders.
 
 ## How to get to it (user POV)
@@ -23,4 +23,4 @@ Open `/admin/login` (or `/admin` when unauthenticated).
 
 ## Gotchas
 
-- Admin JWT role required — customer demo login will not unlock `/admin`.
+- Next and FastAPI both require the `ADMIN` role. Customer demo login will not unlock `/admin`.
