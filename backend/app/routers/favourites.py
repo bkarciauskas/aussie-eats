@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException
 
 from app.deps import CurrentUser, DbDep
 from app.ids import new_id
-from app.mongo_util import strip_mongo_id
+from app.mongo_util import normalize_tags_for_api, strip_mongo_id
 from app.schemas import FavouriteIdsResponse, RestaurantSummary, ToggleFavouriteResponse
 
 router = APIRouter(prefix="/favourites", tags=["favourites"])
@@ -43,7 +43,9 @@ async def list_favourite_restaurants(
     async for doc in rest_cursor:
         cleaned = strip_mongo_id(doc)
         if cleaned:
-            by_id[cleaned["id"]] = RestaurantSummary.model_validate(cleaned)
+            by_id[cleaned["id"]] = RestaurantSummary.model_validate(
+                normalize_tags_for_api(cleaned)
+            )
 
     return [by_id[rid] for rid in fav_ids if rid in by_id]
 

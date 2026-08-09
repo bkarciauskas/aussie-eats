@@ -1,7 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { ApiError, placeOrder, updateOrderStatus } from "@/lib/backend";
+import { beginGuestSession } from "@/lib/auth";
+import { ApiError, getMyOrder, placeOrder, updateOrderStatus } from "@/lib/backend";
 import {
   CardBrand,
   PaymentMethodId,
@@ -28,6 +29,11 @@ export type PlaceOrderInput = {
     phone?: string;
   };
   payment: PlaceOrderPayment;
+  /** Required when placing an order without an existing (non-guest) session. */
+  guest?: {
+    name: string;
+    email: string;
+  };
 };
 
 function actionError(err: unknown, fallback: string): string {
@@ -38,9 +44,26 @@ function actionError(err: unknown, fallback: string): string {
 }
 
 export async function placeOrderAction(input: PlaceOrderInput) {
-  const session = await requireUser();
-  if (!session?.userId) {
-    return { error: "Please log in to place an order.", needsAuth: true as const };
+  let session = await requireUser();
+  const guestName = input.guest?.name?.trim() ?? "";
+  const guestEmail = input.guest?.email?.trim() ?? "";
+  const useGuestCheckout =
+    Boolean(guestName && guestEmail) && (!session?.userId || Boolean(session.isGuest));
+
+  if (useGuestCheckout) {
+    const guest = await beginGuestSession(guestName, guestEmail);
+    if ("error" in guest && guest.error) {
+      return { error: guest.error };
+    }
+    session = await requireUser();
+    if (!session?.userId) {
+      return { error: "Unable to start guest checkout. Please try again." };
+    }
+  } else if (!session?.userId) {
+    return {
+      error: "Enter your name and email to checkout as a guest, or log in.",
+      needsAuth: true as const,
+    };
   }
 
   if (!input.items?.length) {
@@ -129,5 +152,35 @@ export async function updateOrderStatusAction(orderId: string, status: OrderStat
     return { ok: true as const };
   } catch (err) {
     return { error: actionError(err, "Unable to update order status.") };
+  }
+}
+
+/** Lightweight poll for the customer live order tracker (session-authed). */
+export async function pollMyOrderStatusAction(orderId: string) {
+  const session = await requireUser();
+  if (!session?.userId) {
+    return { error: "Please log in to view this order.", unauthorized: true as const };
+  }
+
+  if (!orderId?.trim()) {
+    return { error: "Order not found." };
+  }
+
+  try {
+    const order = await getMyOrder(orderId);
+    if (!order) {
+      return { error: "Order not found." };
+    }
+    return {
+      ok: true as const,
+      status: order.status,
+      statusHistoryJson: order.statusHistoryJson,
+      updatedAt: order.updatedAt.toISOString(),
+    };
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 401) {
+      return { error: "Please log in to view this order.", unauthorized: true as const };
+    }
+    return { error: actionError(err, "Unable to refresh order status.") };
   }
 }

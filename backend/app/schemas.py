@@ -25,6 +25,11 @@ class LoginRequest(ApiModel):
     password: str
 
 
+class GuestSessionRequest(ApiModel):
+    name: str
+    email: str
+
+
 class AuthResponse(ApiModel):
     access_token: str
     token_type: str = "bearer"
@@ -58,6 +63,11 @@ class RestaurantSummary(ApiModel):
     phone: Optional[str] = None
     created_at: datetime = Field(alias="createdAt")
     updated_at: datetime = Field(alias="updatedAt")
+
+
+class RestaurantListResponse(ApiModel):
+    restaurants: list[RestaurantSummary]
+    available_cuisines: list[str] = Field(default_factory=list, alias="availableCuisines")
 
 
 class MenuItemOut(ApiModel):

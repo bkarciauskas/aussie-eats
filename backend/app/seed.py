@@ -24,10 +24,11 @@ from app.domain.cities import DEMO_CITIES
 from app.domain.dietary import (
     parse_allergens,
     parse_dietary_tags,
-    serialize_tags,
+    tags_for_storage,
     union_dietary_tags,
 )
 from app.domain.reviews import blend_restaurant_rating
+from app.domain.search import parse_cuisine_tags
 from app.domain.tag_menu_item import tag_menu_categories, tag_menu_item
 from app.ids import new_id
 from app.models import OrderStatus, Role
@@ -202,7 +203,7 @@ async def bootstrap_handwritten_restaurants_if_empty(db: AsyncDatabase) -> None:
                 "slug": restaurant["slug"],
                 "description": restaurant["description"],
                 "image": restaurant["image"],
-                "cuisineTags": json.dumps(cuisine_tags),
+                "cuisineTags": cuisine_tags,
                 "dietaryTags": restaurant_dietary_tags,
                 "city": restaurant["city"],
                 "suburb": restaurant["suburb"],
@@ -282,15 +283,9 @@ async def sync_dietary_tags_on_catalog(db: AsyncDatabase) -> None:
     updated_restaurants = 0
 
     for venue in venues:
-        try:
-            parsed = json.loads(venue.get("cuisineTags") or "[]")
-            cuisine_tags = (
-                [t for t in parsed if isinstance(t, str)] if isinstance(parsed, list) else []
-            )
-        except (TypeError, json.JSONDecodeError):
-            cuisine_tags = []
+        cuisine_tags = parse_cuisine_tags(venue.get("cuisineTags"))
         cuisine_key = cuisine_tags[0] if cuisine_tags else "Default"
-        item_tags: list[dict[str, str]] = []
+        item_tags: list[dict] = []
 
         categories = await db.categories.find({"restaurantId": venue["id"]}).to_list(
             length=None
@@ -304,7 +299,7 @@ async def sync_dietary_tags_on_catalog(db: AsyncDatabase) -> None:
                     len(existing_diets) == 0 and len(existing_allergens) == 0
                 )
                 if not needs_tag:
-                    item_tags.append({"dietaryTags": item.get("dietaryTags") or "[]"})
+                    item_tags.append({"dietaryTags": item.get("dietaryTags") or []})
                     continue
                 # Diets are recomputed, but a recorded allergen is never forgotten —
                 # heuristics cannot re-derive it from copy alone.
@@ -316,8 +311,8 @@ async def sync_dietary_tags_on_catalog(db: AsyncDatabase) -> None:
                     allergens=existing_allergens,
                 )
                 if (
-                    item.get("dietaryTags") != tagged["dietaryTags"]
-                    or item.get("allergens") != tagged["allergens"]
+                    parse_dietary_tags(item.get("dietaryTags")) != tagged["dietaryTags"]
+                    or parse_allergens(item.get("allergens")) != tagged["allergens"]
                 ):
                     await db.menu_items.update_one(
                         {"id": item["id"]},
@@ -331,8 +326,8 @@ async def sync_dietary_tags_on_catalog(db: AsyncDatabase) -> None:
                     updated_items += 1
                 item_tags.append({"dietaryTags": tagged["dietaryTags"]})
 
-        venue_tags = serialize_tags(union_dietary_tags(item_tags))
-        if venue.get("dietaryTags") != venue_tags:
+        venue_tags = tags_for_storage(union_dietary_tags(item_tags))
+        if parse_dietary_tags(venue.get("dietaryTags")) != venue_tags:
             await db.restaurants.update_one(
                 {"id": venue["id"]},
                 {"$set": {"dietaryTags": venue_tags, "updatedAt": _utc_now()}},

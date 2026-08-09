@@ -496,6 +496,50 @@ async function run() {
       if (!passed) {
         error = `wallet checkout assertions failed: cardFieldsHidden=${cardFieldsHidden} hasPending=${hasPending} hasApplePay=${hasApplePay} hasPaidDemo=${hasPaidDemo} url=${orderUrl}`;
       }
+    } else if (feature === "guest-checkout") {
+      // Stay logged out — guest checkout must not require demo@aussieeats.local.
+      await page.goto(baseUrl + "/restaurants/harbour-burger-co", {
+        waitUntil: "networkidle",
+      });
+      const addButtons = page.getByRole("button", { name: "Add", exact: true });
+      await addButtons.first().waitFor({ state: "visible", timeout: 15000 });
+      await addButtons.first().click();
+      await page.getByText(/Added ·/i).first().waitFor({ timeout: 5000 });
+      await page.screenshot({ path: join(evidenceDir, "01-action-add-to-cart.png"), fullPage: true });
+      steps.push({ action: "added menu item while anonymous" });
+
+      await page.goto(baseUrl + "/cart", { waitUntil: "networkidle" });
+      await page.getByRole("link", { name: /^Checkout$/i }).click();
+      await page.waitForURL(/\/checkout/);
+      await page.waitForLoadState("networkidle");
+
+      const guestEmail = `guest.${Date.now()}@example.com`;
+      await page.locator('input[name="guestName"]').fill("Alex Guest");
+      await page.locator('input[name="guestEmail"]').fill(guestEmail);
+      await page.locator('input[value="card"]').check();
+      await page.getByPlaceholder("4242 4242 4242 4242").fill("4242 4242 4242 4242");
+      await page.getByPlaceholder("Taylor Smith").fill("Alex Guest");
+      await page.locator('input[autocomplete="cc-exp"]').fill("12/30");
+      await page.locator('input[autocomplete="cc-csc"]').fill("123");
+      await page.screenshot({ path: join(evidenceDir, "02-action-guest-checkout.png"), fullPage: true });
+      steps.push({ action: "filled guest checkout with name, email, and demo card", guestEmail });
+
+      await Promise.all([
+        page.waitForURL(/\/orders\/[^/]+/),
+        page.getByRole("button", { name: /Pay & place order/i }).click(),
+      ]);
+      await page.waitForLoadState("networkidle");
+      const orderUrl = page.url();
+      const orderBody = await page.content();
+      const hasPending = /data-status="pending"/.test(orderBody);
+      const hasGuestCopy = /Guest order|full order history/i.test(orderBody);
+      const hasCard = /Visa ending 4242|Card · Visa/i.test(orderBody);
+      await page.screenshot({ path: join(evidenceDir, "03-result-guest-order.png"), fullPage: true });
+      steps.push({ result: "guest order placed", orderUrl, hasPending, hasGuestCopy, hasCard });
+      passed = /\/orders\//.test(orderUrl) && hasPending && hasGuestCopy && hasCard;
+      if (!passed) {
+        error = `guest-checkout assertions failed url=${orderUrl} hasPending=${hasPending} hasGuestCopy=${hasGuestCopy} hasCard=${hasCard}`;
+      }
     } else if (feature === "admin-order-status") {
       await page.goto(baseUrl + "/admin/login", { waitUntil: "networkidle" });
       await page.locator('input[name="email"]').fill("admin@aussieeats.local");
@@ -543,6 +587,109 @@ async function run() {
       passed = pendingAfter < pendingBefore && preparingAfter > preparingBefore;
       if (!passed) {
         error = `order status did not advance: pending ${pendingBefore}→${pendingAfter}, preparing ${preparingBefore}→${preparingAfter}`;
+      }
+    } else if (feature === "live-order-status") {
+      // Customer places an order, keeps detail open; admin advances status; poll catches it.
+      await page.goto(baseUrl + "/login?next=/restaurants/harbour-burger-co", {
+        waitUntil: "networkidle",
+      });
+      await page.locator('input[name="email"]').fill("demo@aussieeats.local");
+      await page.locator('input[name="password"]').fill("demo1234");
+      await Promise.all([
+        page.waitForURL(/\/restaurants\/harbour-burger-co/),
+        page.getByRole("button", { name: /sign in/i }).click(),
+      ]);
+      await page.waitForLoadState("networkidle");
+      await page.evaluate(() => {
+        localStorage.setItem(
+          "aussieeats_location_v1",
+          JSON.stringify({
+            label: "Sydney",
+            suburb: "Sydney",
+            state: "NSW",
+            postcode: "2000",
+            lat: -33.8688,
+            lng: 151.2093,
+          }),
+        );
+      });
+
+      const addButtons = page.getByRole("button", { name: "Add", exact: true });
+      await addButtons.first().waitFor({ state: "visible", timeout: 15000 });
+      await addButtons.first().click();
+      await page.getByText(/Added ·/i).first().waitFor({ timeout: 5000 });
+      await page.goto(baseUrl + "/cart", { waitUntil: "networkidle" });
+      await page.getByRole("link", { name: /^Checkout$/i }).click();
+      await page.waitForURL(/\/checkout/);
+      await page.waitForLoadState("networkidle");
+      await page.locator('input[value="pay_on_delivery"]').check();
+      await Promise.all([
+        page.waitForURL(/\/orders\/[^/]+/),
+        page.getByRole("button", { name: /Place order|Pay & place order/i }).click(),
+      ]);
+      await page.waitForLoadState("networkidle");
+      const orderUrl = page.url();
+      const orderId = new URL(orderUrl).pathname.split("/").pop();
+
+      await page.waitForSelector('[data-live-order-status="pending"]', { timeout: 10000 });
+      await page.waitForSelector('[data-live-polling="true"]', { timeout: 5000 });
+      await page.waitForSelector("[data-courier-eta]", { timeout: 10000 });
+      await page.screenshot({
+        path: join(evidenceDir, "01-action-customer-order-live.png"),
+        fullPage: true,
+      });
+      steps.push({
+        action: "opened live order detail",
+        orderUrl,
+        orderId,
+        livePending: true,
+      });
+
+      const adminContext = await browser.newContext();
+      const adminPage = await adminContext.newPage();
+      await adminPage.goto(baseUrl + "/admin/login", { waitUntil: "networkidle" });
+      await adminPage.locator('input[name="email"]').fill("admin@aussieeats.local");
+      await adminPage.locator('input[name="password"]').fill("admin1234");
+      await Promise.all([
+        adminPage.waitForURL(/\/admin\/?$/),
+        adminPage.getByRole("button", { name: /sign in/i }).click(),
+      ]);
+      await adminPage.goto(baseUrl + "/admin/orders", { waitUntil: "networkidle" });
+      // Newest first; match demo customer + Harbour so we advance the order just placed.
+      const targetRow = adminPage
+        .locator("tr", { has: adminPage.locator('[data-status="pending"]') })
+        .filter({ hasText: "demo@aussieeats.local" })
+        .filter({ hasText: "Harbour Burger" })
+        .first();
+      await targetRow.waitFor({ state: "visible", timeout: 15000 });
+      await targetRow.getByRole("button", { name: /→ Preparing/i }).click();
+      await adminPage.waitForFunction(
+        () => document.querySelectorAll('[data-status="preparing"]').length > 0,
+        null,
+        { timeout: 15000 },
+      );
+      await adminPage.screenshot({
+        path: join(evidenceDir, "02-action-admin-advanced.png"),
+        fullPage: true,
+      });
+      steps.push({ action: "admin advanced order to preparing", orderId });
+      await adminContext.close();
+
+      await page.waitForSelector('[data-live-order-status="preparing"]', { timeout: 12000 });
+      const liveStatus = await page.locator("[data-live-order-status]").getAttribute("data-live-order-status");
+      const eta = await page.locator("[data-courier-eta]").getAttribute("data-courier-eta");
+      await page.screenshot({
+        path: join(evidenceDir, "03-result-customer-preparing.png"),
+        fullPage: true,
+      });
+      steps.push({
+        result: "customer view picked up preparing via poll",
+        liveStatus,
+        eta,
+      });
+      passed = liveStatus === "preparing" && Boolean(eta);
+      if (!passed) {
+        error = `live-order-status failed: liveStatus=${liveStatus} eta=${eta} orderUrl=${orderUrl}`;
       }
     } else if (feature === "admin-menu-edit") {
       await page.goto(baseUrl + "/admin/login", { waitUntil: "networkidle" });

@@ -6,11 +6,10 @@ this is an approximation only.
 
 from __future__ import annotations
 
-import json
 import re
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
-from app.domain.dietary import DIET_IDS, serialize_tags
+from app.domain.dietary import DIET_IDS, coerce_tag_list, tags_for_storage
 
 PEANUT_RE = re.compile(
     r"\b(peanut|peanuts|satay|massaman|crushed peanuts?|peanut sauce)\b",
@@ -56,20 +55,22 @@ SAFE_SIDE_RE = re.compile(
 PORK_RE = re.compile(r"\bpork\b|\bbacon\b", re.I)
 NUT_FREE_RE = re.compile(r"\bnut-?free\b", re.I)
 
+TagInput = Optional[Union[list[str], str]]
+
 
 def tag_menu_item(
     *,
     name: str,
     description: str,
-    dietary_tags: Optional[list[str]] = None,
-    allergens: Optional[list[str]] = None,
+    dietary_tags: TagInput = None,
+    allergens: TagInput = None,
     category_name: Optional[str] = None,
     cuisine_key: Optional[str] = None,
-) -> dict[str, str]:
+) -> dict[str, list[str]]:
     """Derive demo dietary tags + allergens from item copy and optional overrides."""
     haystack = f"{name} {description}"
-    allergen_set = set(allergens or [])
-    diet_set = set(dietary_tags or [])
+    allergen_set = set(coerce_tag_list(allergens))
+    diet_set = set(coerce_tag_list(dietary_tags))
 
     if PEANUT_RE.search(haystack):
         allergen_set.add("peanuts")
@@ -127,15 +128,15 @@ def tag_menu_item(
     ordered_diets = [tag for tag in DIET_IDS if tag in diet_set]
     ordered_allergens = [tag for tag in ("peanuts", "tree-nuts") if tag in allergen_set]
     return {
-        "dietaryTags": serialize_tags(ordered_diets),
-        "allergens": serialize_tags(ordered_allergens),
+        "dietaryTags": tags_for_storage(ordered_diets),
+        "allergens": tags_for_storage(ordered_allergens),
     }
 
 
 def tag_menu_categories(
     categories: list[dict[str, Any]],
     cuisine_key: Optional[str] = None,
-) -> tuple[list[dict[str, Any]], str]:
+) -> tuple[list[dict[str, Any]], list[str]]:
     """Apply tagging across menu categories; returns venue-level dietary tag union."""
     venue_diets: set[str] = set()
     tagged: list[dict[str, Any]] = []
@@ -151,7 +152,7 @@ def tag_menu_categories(
                 category_name=cat.get("name"),
                 cuisine_key=cuisine_key,
             )
-            for tag in json.loads(fields["dietaryTags"]):
+            for tag in fields["dietaryTags"]:
                 venue_diets.add(tag)
             items_out.append(
                 {
@@ -166,4 +167,4 @@ def tag_menu_categories(
         tagged.append({"name": cat["name"], "items": items_out})
 
     ordered = [tag for tag in DIET_IDS if tag in venue_diets]
-    return tagged, serialize_tags(ordered)
+    return tagged, tags_for_storage(ordered)

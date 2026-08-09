@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import re
 from datetime import datetime, timezone
 from typing import Optional
@@ -11,13 +10,13 @@ from app.deps import AdminUser, DbDep
 from app.domain.dietary import (
     filter_known_allergens,
     filter_known_diets,
-    serialize_tags,
+    tags_for_storage,
     union_dietary_tags,
 )
 from app.ids import new_id
 from app.models import Role
-from app.mongo_util import strip_mongo_id
-from app.routers.orders import _order_out
+from app.mongo_util import normalize_tags_for_api, strip_mongo_id
+from app.routers.orders import _orders_out_many
 from app.schemas import (
     AdminDashboardResponse,
     CategoryOut,
@@ -58,7 +57,7 @@ async def _sync_restaurant_dietary_tags(db, restaurant_id: str) -> None:
         {"id": restaurant_id},
         {
             "$set": {
-                "dietaryTags": serialize_tags(union_dietary_tags(items)),
+                "dietaryTags": tags_for_storage(union_dietary_tags(items)),
                 "updatedAt": datetime.now(timezone.utc),
             }
         },
@@ -73,20 +72,19 @@ async def dashboard(_admin: AdminUser, db: DbDep) -> AdminDashboardResponse:
     )
     customer_count = await db.users.count_documents({"role": Role.CUSTOMER.value})
 
-    recent: list[OrderOut] = []
+    recent_docs: list[dict] = []
     cursor = db.orders.find({}).sort([("createdAt", -1)]).limit(5)
     async for doc in cursor:
         cleaned = strip_mongo_id(doc)
         if cleaned:
-            recent.append(
-                await _order_out(
-                    db,
-                    cleaned,
-                    include_restaurant=True,
-                    include_review=False,
-                    include_user=True,
-                )
-            )
+            recent_docs.append(cleaned)
+    recent = await _orders_out_many(
+        db,
+        recent_docs,
+        include_restaurant=True,
+        include_review=False,
+        include_user=True,
+    )
 
     return AdminDashboardResponse(
         restaurantCount=restaurant_count,
@@ -103,7 +101,7 @@ async def list_restaurants(_admin: AdminUser, db: DbDep) -> list[RestaurantSumma
     async for doc in cursor:
         cleaned = strip_mongo_id(doc)
         if cleaned:
-            out.append(RestaurantSummary.model_validate(cleaned))
+            out.append(RestaurantSummary.model_validate(normalize_tags_for_api(cleaned)))
     return out
 
 
@@ -116,7 +114,7 @@ async def get_restaurant(
     restaurant = strip_mongo_id(await db.restaurants.find_one({"id": restaurant_id}))
     if restaurant is None:
         raise HTTPException(status_code=404, detail="Restaurant not found.")
-    return RestaurantSummary.model_validate(restaurant)
+    return RestaurantSummary.model_validate(normalize_tags_for_api(restaurant))
 
 
 @router.get("/restaurants/{restaurant_id}/menu", response_model=list[CategoryOut])
@@ -144,7 +142,7 @@ async def get_restaurant_menu(
         async for item in item_cursor:
             item_doc = strip_mongo_id(item)
             if item_doc:
-                items.append(MenuItemOut.model_validate(item_doc))
+                items.append(MenuItemOut.model_validate(normalize_tags_for_api(item_doc)))
         categories.append(
             CategoryOut(
                 id=cat_doc["id"],
@@ -159,21 +157,19 @@ async def get_restaurant_menu(
 
 @router.get("/orders", response_model=list[OrderOut])
 async def list_orders(_admin: AdminUser, db: DbDep) -> list[OrderOut]:
-    out: list[OrderOut] = []
+    orders: list[dict] = []
     cursor = db.orders.find({}).sort([("createdAt", -1)])
     async for doc in cursor:
         cleaned = strip_mongo_id(doc)
         if cleaned:
-            out.append(
-                await _order_out(
-                    db,
-                    cleaned,
-                    include_restaurant=True,
-                    include_review=False,
-                    include_user=True,
-                )
-            )
-    return out
+            orders.append(cleaned)
+    return await _orders_out_many(
+        db,
+        orders,
+        include_restaurant=True,
+        include_review=False,
+        include_user=True,
+    )
 
 
 @router.post(
@@ -211,7 +207,7 @@ async def upsert_restaurant(
             detail="Latitude and longitude must be valid coordinates.",
         )
 
-    cuisine_tags = json.dumps([t.strip() for t in body.cuisine_tags if t.strip()])
+    cuisine_tags = tags_for_storage([t.strip() for t in body.cuisine_tags if t.strip()])
     now = datetime.now(timezone.utc)
 
     if body.id:
@@ -242,7 +238,7 @@ async def upsert_restaurant(
         )
         updated = strip_mongo_id(await db.restaurants.find_one({"id": body.id}))
         assert updated is not None
-        return RestaurantSummary.model_validate(updated)
+        return RestaurantSummary.model_validate(normalize_tags_for_api(updated))
 
     slug = _slugify(name)
     if await db.restaurants.find_one({"slug": slug}):
@@ -255,7 +251,7 @@ async def upsert_restaurant(
         "description": description,
         "image": body.image,
         "cuisineTags": cuisine_tags,
-        "dietaryTags": "[]",
+        "dietaryTags": [],
         "city": city,
         "suburb": suburb,
         "lat": body.lat,
@@ -273,7 +269,7 @@ async def upsert_restaurant(
         "updatedAt": now,
     }
     await db.restaurants.insert_one(doc)
-    return RestaurantSummary.model_validate(doc)
+    return RestaurantSummary.model_validate(normalize_tags_for_api(doc))
 
 
 @router.patch("/restaurants/{restaurant_id}/active", response_model=OkResponse)
@@ -362,8 +358,8 @@ async def upsert_menu_item(
     if category is None:
         raise HTTPException(status_code=404, detail="Category not found.")
 
-    dietary_tags = serialize_tags(filter_known_diets(body.dietary_tags))
-    allergens = serialize_tags(filter_known_allergens(body.allergens))
+    dietary_tags = tags_for_storage(filter_known_diets(body.dietary_tags))
+    allergens = tags_for_storage(filter_known_allergens(body.allergens))
     image: Optional[str] = body.image or None
 
     if body.id:
@@ -387,7 +383,7 @@ async def upsert_menu_item(
         )
         updated = strip_mongo_id(await db.menu_items.find_one({"id": body.id}))
         assert updated is not None
-        item_out = MenuItemOut.model_validate(updated)
+        item_out = MenuItemOut.model_validate(normalize_tags_for_api(updated))
     else:
         doc = {
             "id": new_id(),
@@ -401,7 +397,7 @@ async def upsert_menu_item(
             "allergens": allergens,
         }
         await db.menu_items.insert_one(doc)
-        item_out = MenuItemOut.model_validate(doc)
+        item_out = MenuItemOut.model_validate(normalize_tags_for_api(doc))
 
     restaurant_id = body.restaurant_id or category["restaurantId"]
     await _sync_restaurant_dietary_tags(db, restaurant_id)

@@ -153,7 +153,7 @@ Document in README: “If the restaurant list is empty, your browser location ma
 ### Customer
 
 1. Unauthenticated users can browse restaurants and menus.
-2. Cart requires login only at checkout (or soft-prompt earlier—pick one and stick to it; prefer **login at checkout**).
+2. Cart works without login; checkout allows **guest** (name + email) or account login.
 3. Place order creates a DB order with status `pending` and clears cart.
 4. Order history shows user’s orders; detail shows line items + status.
 5. No real payment: single method **Pay on delivery**.

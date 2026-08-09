@@ -11,15 +11,119 @@ from tests.fake_mongo import FakeCursor
 def test_restaurants_list_and_detail(client, seed_catalog):
     listed = client.get("/restaurants")
     assert listed.status_code == 200
-    assert len(listed.json()) == 1
-    assert listed.json()[0]["slug"] == "bondi-burger-co"
+    body = listed.json()
+    assert len(body["restaurants"]) == 1
+    assert body["restaurants"][0]["slug"] == "bondi-burger-co"
+    assert "Burgers" in body["availableCuisines"]
 
     detail = client.get("/restaurants/bondi-burger-co")
     assert detail.status_code == 200
-    body = detail.json()
-    assert body["name"] == "Bondi Burger Co"
-    assert len(body["categories"]) == 1
-    assert len(body["categories"][0]["items"]) == 2
+    detail_body = detail.json()
+    assert detail_body["name"] == "Bondi Burger Co"
+    assert len(detail_body["categories"]) == 1
+    assert len(detail_body["categories"][0]["items"]) == 2
+
+
+def test_restaurants_list_filters_city_cuisine_q_diet(client, seed_catalog, fake_db):
+    now = datetime.now(timezone.utc)
+    fake_db.restaurants.docs.append(
+        {
+            "id": "rest_melb",
+            "name": "Melbourne Ramen",
+            "slug": "melbourne-ramen",
+            "description": "Tonkotsu",
+            "image": "/images/restaurants/ramen.jpg",
+            "cuisineTags": '["Ramen","Japanese"]',
+            "dietaryTags": "[]",
+            "city": "Melbourne",
+            "suburb": "CBD",
+            "lat": -37.81,
+            "lng": 144.96,
+            "deliveryFeeCents": 499,
+            "minOrderCents": 1500,
+            "isOpen": True,
+            "isActive": True,
+            "rating": 4.6,
+            "placeId": None,
+            "userRatingCount": 10,
+            "openingHoursJson": None,
+            "phone": None,
+            "createdAt": now,
+            "updatedAt": now,
+        }
+    )
+    fake_db.categories.docs.append(
+        {
+            "id": "cat_melb",
+            "restaurantId": "rest_melb",
+            "name": "Bowls",
+            "sortOrder": 0,
+        }
+    )
+    fake_db.menu_items.docs.append(
+        {
+            "id": "item_vegan",
+            "categoryId": "cat_melb",
+            "name": "Vegan Bowl",
+            "description": "Tofu",
+            "priceCents": 1800,
+            "image": None,
+            "isAvailable": True,
+            "dietaryTags": '["vegan","vegetarian","nut-free"]',
+            "allergens": "[]",
+        }
+    )
+
+    by_city = client.get("/restaurants?city=melbourne")
+    assert by_city.status_code == 200
+    city_body = by_city.json()
+    assert [r["slug"] for r in city_body["restaurants"]] == ["melbourne-ramen"]
+    assert set(city_body["availableCuisines"]) == {"Japanese", "Ramen"}
+
+    by_cuisine = client.get("/restaurants?cuisine=Burgers")
+    assert [r["slug"] for r in by_cuisine.json()["restaurants"]] == ["bondi-burger-co"]
+
+    by_q = client.get("/restaurants?q=bondi")
+    assert [r["slug"] for r in by_q.json()["restaurants"]] == ["bondi-burger-co"]
+
+    by_diet = client.get("/restaurants?diet=vegan")
+    assert [r["slug"] for r in by_diet.json()["restaurants"]] == ["melbourne-ramen"]
+
+
+def test_restaurants_list_city_filter_is_case_insensitive(client, fake_db):
+    now = datetime.now(timezone.utc)
+    fake_db.restaurants.docs.append(
+        {
+            "id": "rest_melb_lower",
+            "name": "Lowercase City Ramen",
+            "slug": "lowercase-city-ramen",
+            "description": "Tonkotsu",
+            "image": "/images/restaurants/ramen.jpg",
+            "cuisineTags": '["Ramen"]',
+            "dietaryTags": "[]",
+            "city": "melbourne",
+            "suburb": "CBD",
+            "lat": -37.81,
+            "lng": 144.96,
+            "deliveryFeeCents": 499,
+            "minOrderCents": 1500,
+            "isOpen": True,
+            "isActive": True,
+            "rating": 4.6,
+            "placeId": None,
+            "userRatingCount": 10,
+            "openingHoursJson": None,
+            "phone": None,
+            "createdAt": now,
+            "updatedAt": now,
+        }
+    )
+
+    response = client.get("/restaurants?city=melbourne")
+    assert response.status_code == 200
+    assert [r["slug"] for r in response.json()["restaurants"]] == [
+        "lowercase-city-ramen"
+    ]
 
 
 def test_dietary_catalog_returns_lean_menu_tags(client, seed_catalog):
@@ -147,6 +251,7 @@ def test_admin_menu_crud(client, seed_catalog, admin_headers, fake_db):
     assert created.status_code == 200
     item_id = created.json()["id"]
     assert created.json()["priceCents"] == 650
+    assert created.json()["dietaryTags"] == '["vegetarian"]'
 
     toggled = client.patch(
         f"/admin/menu-items/{item_id}/availability",
@@ -156,6 +261,10 @@ def test_admin_menu_crud(client, seed_catalog, admin_headers, fake_db):
     assert toggled.status_code == 200
     stored = next(i for i in fake_db.menu_items.docs if i["id"] == item_id)
     assert stored["isAvailable"] is False
+    assert stored["dietaryTags"] == ["vegetarian"]
+    venue = next(r for r in fake_db.restaurants.docs if r["id"] == "rest_1")
+    assert isinstance(venue["dietaryTags"], list)
+    assert "vegetarian" in venue["dietaryTags"]
 
 
 def test_search_suggest(client, seed_catalog):

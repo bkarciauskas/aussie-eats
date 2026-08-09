@@ -1,0 +1,10 @@
+---
+description: Start non-trivial work in /poteto-mode (cloud + local)
+alwaysApply: true
+---
+
+# Poteto mode by default
+
+Non-trivial work (feature, bug fix, refactor, investigation, perf, PR, cloud or overnight run) starts by loading the **poteto-mode** skill and following it. The skill is `disable-model-invocation`, so it never attaches on its own; read it, then let it drive. Its own reminder decides which turns are casual enough to skip.
+
+Reading the skill is the trigger. Writing in poteto's style without loading it is not poteto mode.

@@ -1,24 +1,21 @@
 import { Suspense } from "react";
 import { listFavouriteRestaurantIds } from "@/app/actions/favourites";
-import { listDietaryCatalog, listRestaurants } from "@/lib/backend";
+import { listRestaurants } from "@/lib/backend";
 import { RestaurantFilters } from "@/components/restaurant-filters";
 import { RestaurantsExplorer, type ExplorerRestaurant } from "@/components/restaurants-explorer";
-import { distanceKm, parseCuisineTags, parseOrigin } from "@/lib/restaurants";
+import { distanceKm, parseOrigin } from "@/lib/restaurants";
 import {
   demoCityLabel,
   findDemoCity,
-  matchesRestaurantCity,
   resolveRestaurantQuery,
 } from "@/lib/cities";
-import { restaurantMatchesQuery } from "@/lib/restaurant-query";
 import { estimateDeliveryEta } from "@/lib/eta";
 import { formatHoursSummary, isOpenNow } from "@/lib/opening-hours";
 import {
   applyDietSearchParams,
   dietLabels,
   parseDietQuery,
-  restaurantMatchesDiets,
-  type DietId,
+  serializeDietQuery,
 } from "@/lib/dietary";
 
 type Props = {
@@ -34,23 +31,6 @@ type Props = {
     allergy?: string;
   }>;
 };
-
-/** Venue ids with at least one item matching every diet; null when unfiltered. */
-async function venueIdsMatchingDiets(
-  diets: readonly DietId[],
-): Promise<Set<string> | null> {
-  if (diets.length === 0) return null;
-
-  const venues = await listDietaryCatalog({ activeOnly: true });
-
-  return new Set(
-    venues
-      .filter((venue) =>
-        restaurantMatchesDiets({ menuItems: venue.menuItems }, diets),
-      )
-      .map((venue) => venue.id),
-  );
-}
 
 export default async function RestaurantsPage({ searchParams }: Props) {
   const {
@@ -72,30 +52,24 @@ export default async function RestaurantsPage({ searchParams }: Props) {
   const cityPin = findDemoCity(cityFilter);
   const etaOrigin = origin ?? (cityPin ? { lat: cityPin.lat, lng: cityPin.lng } : null);
 
-  const [restaurants, favouriteIds, dietMatchedIds] = await Promise.all([
-    listRestaurants({ activeOnly: true }),
+  const [{ restaurants, availableCuisines }, favouriteIds] = await Promise.all([
+    listRestaurants({
+      activeOnly: true,
+      city: cityFilter || undefined,
+      cuisine: cuisine || undefined,
+      q: q || undefined,
+      diet: activeDiets.length > 0 ? serializeDietQuery(activeDiets) : undefined,
+    }),
     listFavouriteRestaurantIds(),
-    venueIdsMatchingDiets(activeDiets),
   ]);
 
-  const allCuisines = Array.from(
-    new Set(restaurants.flatMap((r) => parseCuisineTags(r.cuisineTags))),
-  ).sort();
-
   const filtered = restaurants.filter((r) => {
-    const tags = parseCuisineTags(r.cuisineTags);
-    const matchesQ = restaurantMatchesQuery(r, q);
-    const matchesCuisine =
-      !cuisine || tags.some((t) => t.toLowerCase() === cuisine.toLowerCase());
-    const matchesCity = matchesRestaurantCity(r.city, cityFilter);
-    const openNow = isOpenNow({
+    if (!openNowOnly) return true;
+    return isOpenNow({
       openingHoursJson: r.openingHoursJson,
       isOpen: r.isOpen,
       city: r.city,
     });
-    const matchesOpen = !openNowOnly || openNow;
-    const matchesDiet = !dietMatchedIds || dietMatchedIds.has(r.id);
-    return matchesQ && matchesCuisine && matchesCity && matchesOpen && matchesDiet;
   });
 
   const dietLinkParams = new URLSearchParams();
@@ -169,7 +143,7 @@ export default async function RestaurantsPage({ searchParams }: Props) {
 
       <Suspense fallback={<div className="text-sm text-[var(--ae-ink-muted)]">Loading filters…</div>}>
         <RestaurantFilters
-          cuisines={allCuisines}
+          cuisines={availableCuisines}
           initialQ={q}
           initialCuisine={cuisine}
           initialCity={cityFilter}

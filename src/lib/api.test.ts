@@ -29,6 +29,22 @@ test("authResponseSchema accepts FastAPI login/signup payload", () => {
   });
   assert.equal(parsed.access_token, "jwt.token.here");
   assert.equal(parsed.user.role, "CUSTOMER");
+  assert.equal(parsed.user.isGuest, false);
+});
+
+test("authResponseSchema accepts guest checkout payload", () => {
+  const parsed = authResponseSchema.parse({
+    access_token: "jwt.guest.here",
+    token_type: "bearer",
+    user: {
+      id: "g1",
+      email: "guest@example.com",
+      name: "Guest",
+      role: "CUSTOMER",
+      isGuest: true,
+    },
+  });
+  assert.equal(parsed.user.isGuest, true);
 });
 
 test("userPublicSchema rejects unknown roles", () => {

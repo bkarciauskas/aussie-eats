@@ -19,6 +19,9 @@ router = APIRouter(prefix="/search", tags=["search"])
 # The typeahead only needs a handful of suggestions, so a bounded candidate set
 # keeps the query cheap regardless of catalog size.
 _CANDIDATE_LIMIT = 25
+# Fallback scan loads a larger but still bounded set so in-process ranking has
+# enough candidates without reading the entire catalog.
+_SCAN_FALLBACK_LIMIT = 200
 
 # Cache whether Atlas Search is usable so we don't probe list_search_indexes on
 # every keystroke. True is sticky; False is re-checked periodically because the
@@ -99,9 +102,13 @@ async def _atlas_candidates(db, query: str) -> list[dict]:
 
 
 async def _scan_candidates(db) -> list[dict]:
-    """Fallback: load active restaurants and rank in-process (small catalogs)."""
+    """Fallback: load a bounded active set and rank in-process."""
     candidates: list[dict] = []
-    cursor = db.restaurants.find({"isActive": True}).sort([("rating", -1), ("name", 1)])
+    cursor = (
+        db.restaurants.find({"isActive": True})
+        .sort([("rating", -1), ("name", 1)])
+        .limit(_SCAN_FALLBACK_LIMIT)
+    )
     async for doc in cursor:
         cleaned = strip_mongo_id(doc)
         if cleaned:
