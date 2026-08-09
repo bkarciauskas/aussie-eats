@@ -93,3 +93,10 @@ export const ORDER_TIMELINE_STEPS = [
   OrderStatus.out_for_delivery,
   OrderStatus.delivered,
 ] as const;
+
+/** How often the customer order detail page soft-polls for status changes. */
+export const ORDER_STATUS_POLL_MS = 3000;
+
+export function isTerminalOrderStatus(status: string): boolean {
+  return status === OrderStatus.delivered || status === OrderStatus.cancelled;
+}
