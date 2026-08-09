@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from collections import defaultdict
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, status
@@ -20,7 +21,7 @@ from app.domain.payment import (
 )
 from app.ids import new_id
 from app.models import OrderStatus, Role, UserPublic
-from app.mongo_util import strip_mongo_id
+from app.mongo_util import normalize_tags_for_api, strip_mongo_id
 from app.schemas import (
     OkResponse,
     OrderItemOut,
@@ -45,6 +46,77 @@ async def _load_order_items(db, order_id: str) -> list[OrderItemOut]:
     return items
 
 
+def _user_public(doc: dict) -> UserPublic:
+    return UserPublic(
+        id=doc["id"],
+        email=doc["email"],
+        name=doc["name"],
+        role=Role(doc.get("role", Role.CUSTOMER)),
+        is_guest=bool(doc.get("isGuest", False)),
+    )
+
+
+async def _orders_out_many(
+    db,
+    orders: list[dict],
+    *,
+    include_restaurant: bool = True,
+    include_review: bool = True,
+    include_user: bool = False,
+) -> list[OrderOut]:
+    if not orders:
+        return []
+
+    order_ids = [order["id"] for order in orders]
+    items_by_order: dict[str, list[OrderItemOut]] = defaultdict(list)
+    async for doc in db.order_items.find({"orderId": {"$in": order_ids}}):
+        cleaned = strip_mongo_id(doc)
+        if cleaned:
+            items_by_order[cleaned["orderId"]].append(OrderItemOut.model_validate(cleaned))
+
+    restaurants_by_id: dict[str, RestaurantSummary] = {}
+    if include_restaurant:
+        restaurant_ids = list({order["restaurantId"] for order in orders})
+        if restaurant_ids:
+            async for doc in db.restaurants.find({"id": {"$in": restaurant_ids}}):
+                cleaned = strip_mongo_id(doc)
+                if cleaned:
+                    restaurants_by_id[cleaned["id"]] = RestaurantSummary.model_validate(
+                        normalize_tags_for_api(cleaned)
+                    )
+
+    reviews_by_order: dict[str, ReviewOut] = {}
+    if include_review:
+        async for doc in db.reviews.find({"orderId": {"$in": order_ids}}):
+            cleaned = strip_mongo_id(doc)
+            if cleaned:
+                reviews_by_order[cleaned["orderId"]] = ReviewOut.model_validate(cleaned)
+
+    users_by_id: dict[str, UserPublic] = {}
+    if include_user:
+        user_ids = list({order["userId"] for order in orders})
+        if user_ids:
+            async for doc in db.users.find({"id": {"$in": user_ids}}):
+                cleaned = strip_mongo_id(doc)
+                if cleaned:
+                    users_by_id[cleaned["id"]] = _user_public(cleaned)
+
+    return [
+        OrderOut.model_validate(
+            {
+                **order,
+                "items": items_by_order.get(order["id"], []),
+                "restaurant": restaurants_by_id.get(order["restaurantId"])
+                if include_restaurant
+                else None,
+                "review": reviews_by_order.get(order["id"]) if include_review else None,
+                "user": users_by_id.get(order["userId"]) if include_user else None,
+            }
+        )
+        for order in orders
+    ]
+
+
 async def _order_out(
     db,
     order: dict,
@@ -53,37 +125,14 @@ async def _order_out(
     include_review: bool = True,
     include_user: bool = False,
 ) -> OrderOut:
-    items = await _load_order_items(db, order["id"])
-    restaurant = None
-    if include_restaurant:
-        rest = strip_mongo_id(await db.restaurants.find_one({"id": order["restaurantId"]}))
-        if rest:
-            restaurant = RestaurantSummary.model_validate(rest)
-    review = None
-    if include_review:
-        rev = strip_mongo_id(await db.reviews.find_one({"orderId": order["id"]}))
-        if rev:
-            review = ReviewOut.model_validate(rev)
-    user = None
-    if include_user:
-        u = strip_mongo_id(await db.users.find_one({"id": order["userId"]}))
-        if u:
-            user = UserPublic(
-                id=u["id"],
-                email=u["email"],
-                name=u["name"],
-                role=Role(u.get("role", Role.CUSTOMER)),
-                is_guest=bool(u.get("isGuest", False)),
-            )
-    return OrderOut.model_validate(
-        {
-            **order,
-            "items": items,
-            "restaurant": restaurant,
-            "review": review,
-            "user": user,
-        }
+    results = await _orders_out_many(
+        db,
+        [order],
+        include_restaurant=include_restaurant,
+        include_review=include_review,
+        include_user=include_user,
     )
+    return results[0]
 
 
 def _resolve_payment_method(payment: dict) -> str:
@@ -234,13 +283,13 @@ async def place_order(
 
 @router.get("/orders", response_model=list[OrderOut])
 async def list_my_orders(user: CurrentUser, db: DbDep) -> list[OrderOut]:
+    orders: list[dict] = []
     cursor = db.orders.find({"userId": user.id}).sort([("createdAt", -1)])
-    out: list[OrderOut] = []
     async for doc in cursor:
         cleaned = strip_mongo_id(doc)
         if cleaned:
-            out.append(await _order_out(db, cleaned))
-    return out
+            orders.append(cleaned)
+    return await _orders_out_many(db, orders)
 
 
 @router.get("/orders/{order_id}", response_model=OrderOut)
