@@ -97,12 +97,33 @@ class FakeCollection:
         for doc in docs:
             self.docs.append(copy.deepcopy(doc))
 
-    async def update_one(self, query: dict[str, Any], update: dict[str, Any]):
+    async def update_one(self, query: dict[str, Any], update: dict[str, Any] | list[dict[str, Any]]):
         for doc in self.docs:
-            if _match(doc, query):
-                if "$set" in update:
-                    doc.update(update["$set"])
-                return FakeUpdateResult(1)
+            if not _match(doc, query):
+                continue
+            if isinstance(update, list):
+                # Support status-transition aggregation pipelines used by admin PATCH.
+                stage = update[0].get("$set", {}) if update else {}
+                new_status = stage.get("status")
+                at = stage.get("updatedAt")
+                if isinstance(new_status, str) and at is not None:
+                    from app.domain.orders import OrderStatus, append_status_history
+
+                    doc["status"] = new_status
+                    doc["updatedAt"] = at
+                    doc["statusHistoryJson"] = append_status_history(
+                        doc.get("statusHistoryJson"),
+                        OrderStatus(new_status),
+                        at,
+                    )
+                    return FakeUpdateResult(1)
+                return FakeUpdateResult(0)
+            if "$set" in update:
+                doc.update(update["$set"])
+            if "$push" in update:
+                for key, value in update["$push"].items():
+                    doc.setdefault(key, []).append(copy.deepcopy(value))
+            return FakeUpdateResult(1)
         return FakeUpdateResult(0)
 
     async def delete_one(self, query: dict[str, Any]):

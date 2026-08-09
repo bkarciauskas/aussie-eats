@@ -66,6 +66,6 @@ def menu_for_cuisine(template_key: str) -> list[dict[str, Any]]:
     return copy.deepcopy(templates.get(template_key) or templates["Default"])
 
 
-def clone_menu_categories(template_key: str) -> tuple[list[dict[str, Any]], str]:
+def clone_menu_categories(template_key: str) -> tuple[list[dict[str, Any]], list[str]]:
     """Deep-clone and tag menu categories for Mongo create payloads."""
     return tag_menu_categories(menu_for_cuisine(template_key), template_key)

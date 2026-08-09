@@ -3,6 +3,15 @@ import pytest
 from app import db as db_module
 
 
+class FakeCursor:
+    def __aiter__(self):
+        self._iter = iter(())
+        return self
+
+    async def __anext__(self):
+        raise StopAsyncIteration
+
+
 class FakeCollection:
     def __init__(self, name: str, calls: list):
         self.name = name
@@ -10,6 +19,12 @@ class FakeCollection:
 
     async def create_index(self, keys, **kwargs):
         self._calls.append((self.name, keys, kwargs))
+
+    def find(self, query=None):
+        return FakeCursor()
+
+    async def update_one(self, query, update):
+        return None
 
 
 class FakeDB:
@@ -53,10 +68,36 @@ async def test_ensure_indexes_covers_planned_collections(monkeypatch):
     ]
     assert unique_email and unique_email[0].get("unique") is True
 
+    app_id_collections = {
+        "users",
+        "addresses",
+        "restaurants",
+        "favourites",
+        "categories",
+        "menu_items",
+        "orders",
+        "order_items",
+        "reviews",
+    }
+    for collection in app_id_collections:
+        id_unique = [
+            kwargs
+            for name, keys, kwargs in fake.calls
+            if name == collection and keys == "id"
+        ]
+        assert id_unique and id_unique[0].get("unique") is True, collection
+
+    created_at = [
+        kwargs
+        for name, keys, kwargs in fake.calls
+        if name == "orders" and keys == "createdAt"
+    ]
+    assert created_at
+
     favourite_compound = [
         keys
         for name, keys, kwargs in fake.calls
-        if name == "favourites" and kwargs.get("unique") is True
+        if name == "favourites" and kwargs.get("unique") is True and keys != "id"
     ]
     assert favourite_compound
 

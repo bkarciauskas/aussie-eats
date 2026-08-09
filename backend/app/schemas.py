@@ -65,6 +65,11 @@ class RestaurantSummary(ApiModel):
     updated_at: datetime = Field(alias="updatedAt")
 
 
+class RestaurantListResponse(ApiModel):
+    restaurants: list[RestaurantSummary]
+    available_cuisines: list[str] = Field(default_factory=list, alias="availableCuisines")
+
+
 class MenuItemOut(ApiModel):
     id: str
     category_id: str = Field(alias="categoryId")
