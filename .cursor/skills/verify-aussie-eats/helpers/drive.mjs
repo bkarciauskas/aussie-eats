@@ -383,22 +383,36 @@ async function run() {
       const navRestaurants = await page
         .locator('nav[aria-label="Admin"] a[href="/admin/restaurants"]')
         .count();
-      const body = await page.content();
-      const hasRestaurantLabel = /Restaurants/i.test(body);
+      const hasDashboardHeading = await page
+        .getByRole("heading", { name: "Dashboard", exact: true })
+        .isVisible();
+      const metricLabels = ["Restaurants", "Open orders", "Customers"];
+      const metrics = [];
+      for (const label of metricLabels) {
+        const panel = page.locator("div.panel").filter({
+          has: page.getByText(label, { exact: true }),
+        });
+        const value = (await panel.locator("p").nth(1).textContent())?.trim() || "";
+        metrics.push({ label, value, numeric: /^\d+$/.test(value) });
+      }
+      const hasDashboardMetrics = metrics.every((metric) => metric.numeric);
       steps.push({
         result: "admin signed in and dashboard loaded",
         url,
         navOrders,
         navRestaurants,
-        hasRestaurantLabel,
+        hasDashboardHeading,
+        hasDashboardMetrics,
+        metrics,
       });
       passed =
         /\/admin\/?$/.test(new URL(url).pathname) &&
         navOrders > 0 &&
         navRestaurants > 0 &&
-        hasRestaurantLabel;
+        hasDashboardHeading &&
+        hasDashboardMetrics;
       if (!passed) {
-        error = `admin dashboard assertions failed url=${url} navOrders=${navOrders} navRestaurants=${navRestaurants}`;
+        error = `admin dashboard assertions failed url=${url} navOrders=${navOrders} navRestaurants=${navRestaurants} hasHeading=${hasDashboardHeading} hasMetrics=${hasDashboardMetrics}`;
       }
     } else if (feature === "place-order") {
       await page.goto(baseUrl + "/login?next=/restaurants/harbour-burger-co", {
