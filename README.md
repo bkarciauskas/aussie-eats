@@ -103,12 +103,14 @@ npm run db:export-catalog              # rewrite catalog_snapshot.json from Mong
 
 ## Architecture notes
 
-- **Persistence:** MongoDB via FastAPI (`backend/`) — Atlas or local
+- **Persistence:** MongoDB via FastAPI (`backend/`) — Atlas or local; indexes ensured on API startup
 - **Catalog:** `db:seed` restores `backend/app/catalog_snapshot.json` when empty; `db:import-places` is an optional Google refresh; photos under `public/images/imported/`
-- **Auth:** FastAPI JWT via `src/lib/api.ts`; iron-session stores the Bearer token (`CUSTOMER` / `ADMIN` roles)
-- **Cart:** client React context + `localStorage`; server writes orders on checkout
+- **Browse:** FastAPI applies `city` / `cuisine` / `q` / `diet` on `GET /restaurants`; Next still owns open-now and distance/ETA
+- **Auth:** FastAPI JWT via `src/lib/api.ts`; iron-session stores the Bearer token (`CUSTOMER` / `ADMIN`). Guest checkout uses `POST /auth/guest`
+- **Cart:** client React context + `localStorage`; server writes orders on checkout (guest or logged-in)
+- **Orders:** `/orders/[id]` soft-polls status every 3s with a mock courier ETA (not a live courier feed)
 - **Money:** integer cents (`unitPriceCents` / `priceCents`); display with `formatAUD` (`en-AU`)
-- **Location:** demo city pins in `localStorage`; `/restaurants` filters by city label via `matchesRestaurantCity`
+- **Location:** demo city pins in `localStorage`; city filter matches Mongo labels via `find_demo_city` / `matchesRestaurantCity`
 - **Images:** local assets under `public/images/`
 
 Deeper developer docs (browse/location, cart money, Places runbook, Cloud Agents, troubleshooting):

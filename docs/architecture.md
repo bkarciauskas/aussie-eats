@@ -27,21 +27,27 @@ flowchart LR
 
 ## Location and city filtering
 
-**Intent:** Scope restaurant browse to an Australian capital without requiring a Maps key.
+**Intent:** Scope restaurant browse to an Australian capital without requiring a Maps key. Keep Mongo round-trips small as the catalog grows (~650 venues in the snapshot).
 
 | Piece | Role |
 | --- | --- |
 | `src/lib/cities.ts` | Canonical `DEMO_CITIES` (id + label + CBD pin). `resolveRestaurantQuery` treats a bare city name in `q` as a city filter. `matchesRestaurantCity` accepts id (`melbourne`) or label (`Melbourne`). |
 | `src/components/location-provider.tsx` | Session pin in `localStorage` key `aussieeats_location_v1`. |
 | `src/components/restaurant-search.tsx` | Hero/header search waits for hydration so a saved pin is not dropped, then navigates to `/restaurants?...`. |
-| `src/app/(store)/restaurants/page.tsx` | Loads active restaurants from FastAPI, filters by `q` / cuisine / city / open-now / diet+allergy, optionally sorts by Haversine distance when `lat`/`lng` are present. |
-| `src/lib/dietary.ts` | Diet filter ids, URL parsing (`diet=…`, `allergy=nuts`), conservative item match (untagged ≠ nut-free). A venue matches only when one item satisfies every selected diet, so browse results and the filtered menu agree; the venue-level `dietaryTags` union is display-only. |
+| `GET /restaurants` (`backend/app/routers/restaurants.py`) | **Server-side** filters: `city` (Mongo query on label), then in-process `cuisine` / `q` / `diet`. City uses a case-insensitive exact label match via `find_demo_city`. Diet loads menu items for the scoped set and keeps venues where one item satisfies every selected diet. |
+| `src/app/(store)/restaurants/page.tsx` | Calls `listRestaurants` with `city` / `cuisine` / `q` / `diet`. Applies **open-now** and distance/ETA in Next (needs opening-hours TZ + origin pin). Optionally sorts by Haversine when `lat`/`lng` are present. |
+| `src/lib/dietary.ts` | Diet filter ids, URL parsing (`diet=…`, `allergy=nuts`). Untagged items are not treated as nut-free. Venue-level `dietaryTags` is display-only. |
 
 **Constraints:**
 
-- Mongo stores city as a **label** (`"Melbourne"`), not the slug id. Always match via `matchesRestaurantCity` / `findDemoCity`.
-- Search submit must not run before `hydrated` — otherwise the city query param can be lost on first paint.
+- Mongo stores city as a **label** (`"Melbourne"`), not the slug id. FastAPI normalizes query city through `find_demo_city`; client helpers still use `matchesRestaurantCity` / `findDemoCity` for UI.
+- Open-now stays on the Next side. Hours evaluation needs the city label for IANA TZ and is not pushed into the list API.
+- Search submit must not run before `hydrated` or the city query param can be lost on first paint.
 - Map pins on `/restaurants` come from the **same filtered list** as the cards (`RestaurantsExplorer`), not a separate query.
+
+### Typeahead (`GET /search/suggest`)
+
+When Atlas Search is available, FastAPI prefers the `restaurants_autocomplete` search index (name / suburb autocomplete, cuisine text, `isActive` filter). On local mongod or while the index is building it falls back to a bounded active-restaurant scan plus in-process ranking (`backend/app/routers/search.py`). Startup calls `ensure_search_indexes()`; missing Search is a silent no-op.
 
 ## Cart and money
 
@@ -74,26 +80,46 @@ Runtime browse does **not** call Google. Hours/ratings come from the seed snapsh
 | Piece | Role |
 | --- | --- |
 | FastAPI `orders` / `admin` routers | Create orders, list customer/admin views, status transitions. |
-| `src/lib/orders.ts` | Status labels, `ALLOWED_TRANSITIONS` (mirrored in backend domain), quantity parsing helpers for UI. |
+| `src/lib/orders.ts` | Status labels, `ALLOWED_TRANSITIONS` (mirrored in backend domain), `ORDER_STATUS_POLL_MS` (3000), quantity helpers. |
 | Order `statusHistory` | Array of `{ status, at }` appended on create and admin transitions. |
 | Customer timeline | `ORDER_TIMELINE_STEPS` (excludes `cancelled`). |
+| `LiveOrderStatus` (`src/components/live-order-status.tsx`) | Soft-polls `pollMyOrderStatusAction` every 3s while status is non-terminal. Updates the status pill + timeline; calls `router.refresh()` when status changes. Stops on `delivered` / `cancelled`. |
+| Mock courier ETA (`estimateCourierEta` in `src/lib/eta.ts`) | Client-only. Shrinks remaining time by status (`pending` full prep+travel, `preparing` ~10 min prep left + travel, `out_for_delivery` shortened travel). Origin via `resolveOrderEtaOrigin`: live demo pin → delivery suburb/state → restaurant city pin. |
 
 Allowed transitions: `pending → preparing|cancelled`, `preparing → out_for_delivery|cancelled`, `out_for_delivery → delivered|cancelled`. Terminal states have no further transitions.
+
+**Live tracker constraints:**
+
+- Polling needs a session (guest or full account). There is no websocket; admin status changes show up on the next poll tick.
+- Courier ETA is demo math from lat/lng, not a courier feed. Without a resolvable origin the banner stays hidden.
 
 ## Auth and sessions
 
 **Ownership split:**
 
-1. **FastAPI** issues JWTs (`POST /auth/login`, `POST /auth/signup`) signed with `JWT_SECRET` (`backend/app/security.py`).
-2. **Next** stores the Bearer token plus user fields in an iron-session cookie (`SESSION_SECRET`, cookie `aussieeats_session` via `src/lib/session.ts`).
+1. **FastAPI** issues JWTs (`POST /auth/login`, `POST /auth/signup`, `POST /auth/guest`) signed with `JWT_SECRET` (`backend/app/security.py`).
+2. **Next** stores the Bearer token plus user fields in an iron-session cookie (`SESSION_SECRET`, cookie `aussieeats_session` via `src/lib/session.ts`). Guest sessions set `isGuest: true`.
 3. Authed Server Actions / `apiFetchAuthed` send `Authorization: Bearer …`. Missing/invalid tokens clear the session.
 4. Logout: best-effort `POST /auth/logout`, then clear the cookie. JWT remains client-held until expiry.
 
 Roles `CUSTOMER` | `ADMIN` in `src/lib/roles.ts`. Route guards: `requireUser` / `requireAdmin` (require a JWT in session).
 
+### Guest checkout
+
+**Intent:** Place an order without forcing account signup (APJ-8).
+
+| Step | Behavior |
+| --- | --- |
+| Checkout form | Logged-out (or already-guest) users enter name + email. Cart still works without login. |
+| `placeOrderAction` | When guest contact is present, calls `beginGuestSession` → `POST /auth/guest`, then places the order with that JWT. |
+| `POST /auth/guest` | Creates or resumes a `isGuest: true` user (random unusable password hash). Rejects emails that already belong to a real account (409). |
+| Signup after guest | `POST /auth/signup` with the same email **upgrades in place** (`isGuest: false`, sets password) so prior orders keep the same `userId`. |
+| Login | Guest emails cannot password-login until upgraded; login returns 401 with a guest-specific message. |
+
 ## Persistence and seed
 
 - Collections live in Mongo (`MONGODB_URI` / `MONGODB_DB`). There is no Prisma/SQLite path.
+- On API startup, `ensure_indexes()` creates uniqueness and browse-friendly indexes (notably `restaurants`: `(city, isActive)`, `(isActive, rating, name)`). Seed and Places import also call it.
 - `npm run db:seed` → `cd backend && python3 -m app.seed` upserts demo users, restores `catalog_snapshot.json` when the catalog is empty (handwritten `seed_data.json` if the snapshot is missing), and seeds sample orders/reviews once (unless `FORCE_SEED_ORDERS=1`).
 - Snapshot export: `npm run db:export-catalog` writes `backend/app/catalog_snapshot.json` from Mongo.
 - Places refresh: `npm run db:import-places` upserts by `placeId`; photos under `public/images/imported/` (gitignored; seed falls back to stock images when missing).
