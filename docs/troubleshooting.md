@@ -30,14 +30,21 @@ Quick fixes for issues that have already bitten this codebase. Verify against cu
 | Checkout total ≠ cart total | Expected: server re-prices from DB | If wrong after refresh, check admin menu `priceCents` and that place-order uses DB prices. |
 | Cannot add from a second restaurant | Single-vendor cart | Clear cart first (by design). |
 | Invalid quantity errors | Qty outside 1–99 | `MAX_LINE_QUANTITY` is 99; both UI and `placeOrderAction` enforce it. |
+| Guest checkout rejected with “account already exists” | Email belongs to a real (non-guest) user | Log in with that email, or use a different guest email. |
+| Cannot log in after guest checkout | Guest users have no usable password | Sign up with the same email to upgrade the guest row in place, or continue as guest at checkout. |
+| Guest orders missing after new signup on another email | Signup only preserves orders when the email matches the guest | Reuse the guest email on signup so `userId` is upgraded, not replaced. |
 
 ## Open now / ETA / orders
 
 | Symptom | Likely cause | Fix |
 | --- | --- | --- |
 | “Open now” wrong for a city | Missing `openingHoursJson` or wrong city label for TZ | Hours JSON from Places; TZ keyed by city label in `opening-hours.ts`. Fallback is `isOpen`. |
-| No ETA label | No origin and no city pin | Set demo city or pass `lat`/`lng` on `/restaurants`. |
+| No browse ETA label | No origin and no city pin | Set demo city or pass `lat`/`lng` on `/restaurants`. |
 | Order timeline empty / stuck | Missing `statusHistoryJson` | New orders seed history on create; admin transitions append. `FORCE_SEED_ORDERS=1 npm run db:seed` rebuilds sample orders. |
+| Live status on `/orders/[id]` never moves | Admin never advanced the order, or poll stopped | Advance status in `/admin`. Client polls every 3s until `delivered`/`cancelled` (`ORDER_STATUS_POLL_MS`). Reload if the tab was backgrounded for a long time. |
+| No courier ETA banner on order detail | No resolvable origin | Set a demo city pin, or use a delivery suburb/state that maps to `DEMO_CITIES`. |
+| `/restaurants` slow with full catalog | Missing Mongo indexes or filtering only in Next | Restart FastAPI so `ensure_indexes()` runs. City/cuisine/q/diet should hit `GET /restaurants` query params, not a full client-side catalog filter. |
+| Typeahead empty on Atlas | Search index not ready | `ensure_search_indexes()` creates `restaurants_autocomplete` when supported. Until `queryable`, suggest uses the scan fallback (still works, may feel slower). |
 
 ## Dev / verify
 
