@@ -23,5 +23,5 @@ Header **Log in** → `/login`, or open `/login` (optional `?next=`).
 
 ## Gotchas
 
-- Storefront and admin use separate login routes and role checks, but share the `aussieeats_session` cookie.
+- Storefront and admin share sign-in and the `aussieeats_session` cookie; the admin route adds the `ADMIN` role check.
 - Requires FastAPI + seeded demo user; Next alone is not enough.

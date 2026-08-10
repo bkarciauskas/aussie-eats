@@ -25,5 +25,5 @@ Nav **Restaurants** → `/restaurants`, or open `/restaurants` directly.
 ## Gotchas
 
 - After snapshot seed the list is large (hundreds of venues) with no pagination. Assert presence, not exact counts.
-- Empty catalog usually means `db:seed` was skipped or Mongo is unreachable.
+- An empty catalog usually means `db:seed` was skipped. An unavailable API or backend error may mean Mongo is unreachable.
 - Interactive map pins require `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`; without it the page shows a map placeholder.
