@@ -307,6 +307,7 @@ async function run() {
       await page.locator('input[name="email"]').fill("demo@aussieeats.local");
       await page.locator('input[name="password"]').fill("demo1234");
       await page.screenshot({ path: join(evidenceDir, "01-login-form.png"), fullPage: true });
+      steps.push({ action: "filled customer login form" });
       await Promise.all([
         page.waitForURL((u) => !u.pathname.endsWith("/login")),
         page.getByRole("button", { name: /sign in/i }).click(),
@@ -314,7 +315,7 @@ async function run() {
       await page.waitForLoadState("networkidle");
       await page.screenshot({ path: join(evidenceDir, "02-after-login.png"), fullPage: true });
       const logout = await page.getByRole("button", { name: /log out/i }).count();
-      steps.push({ url: page.url(), logoutVisible: logout > 0 });
+      steps.push({ result: "customer signed in", url: page.url(), logoutVisible: logout > 0 });
       passed = logout > 0;
       if (!passed) error = "Log out control not visible after login";
     } else if (feature === "favourites") {
@@ -370,6 +371,7 @@ async function run() {
       await page.locator('input[name="email"]').fill("admin@aussieeats.local");
       await page.locator('input[name="password"]').fill("admin1234");
       await page.screenshot({ path: join(evidenceDir, "01-admin-login.png"), fullPage: true });
+      steps.push({ action: "filled admin login form" });
       await Promise.all([
         page.waitForURL(/\/admin\/?$/),
         page.getByRole("button", { name: /sign in/i }).click(),
@@ -381,16 +383,36 @@ async function run() {
       const navRestaurants = await page
         .locator('nav[aria-label="Admin"] a[href="/admin/restaurants"]')
         .count();
-      const body = await page.content();
-      const hasRestaurantLabel = /Restaurants/i.test(body);
-      steps.push({ url, navOrders, navRestaurants, hasRestaurantLabel });
+      const hasDashboardHeading = await page
+        .getByRole("heading", { name: "Dashboard", exact: true })
+        .isVisible();
+      const metricLabels = ["Restaurants", "Open orders", "Customers"];
+      const metrics = [];
+      for (const label of metricLabels) {
+        const panel = page.locator("div.panel").filter({
+          has: page.getByText(label, { exact: true }),
+        });
+        const value = (await panel.locator("p").nth(1).textContent())?.trim() || "";
+        metrics.push({ label, value, numeric: /^\d+$/.test(value) });
+      }
+      const hasDashboardMetrics = metrics.every((metric) => metric.numeric);
+      steps.push({
+        result: "admin signed in and dashboard loaded",
+        url,
+        navOrders,
+        navRestaurants,
+        hasDashboardHeading,
+        hasDashboardMetrics,
+        metrics,
+      });
       passed =
         /\/admin\/?$/.test(new URL(url).pathname) &&
         navOrders > 0 &&
         navRestaurants > 0 &&
-        hasRestaurantLabel;
+        hasDashboardHeading &&
+        hasDashboardMetrics;
       if (!passed) {
-        error = `admin dashboard assertions failed url=${url} navOrders=${navOrders} navRestaurants=${navRestaurants}`;
+        error = `admin dashboard assertions failed url=${url} navOrders=${navOrders} navRestaurants=${navRestaurants} hasHeading=${hasDashboardHeading} hasMetrics=${hasDashboardMetrics}`;
       }
     } else if (feature === "place-order") {
       await page.goto(baseUrl + "/login?next=/restaurants/harbour-burger-co", {
@@ -432,7 +454,7 @@ async function run() {
       const orderUrl = page.url();
       const orderBody = await page.content();
       const hasPending = /data-status="pending"/.test(orderBody);
-      const hasCard = /Visa ending 4242|Card · Visa/i.test(orderBody);
+      const hasCard = /Card · Visa ending 4242/i.test(orderBody);
       await page.screenshot({ path: join(evidenceDir, "03-result-order.png"), fullPage: true });
       steps.push({ result: "order placed", orderUrl, hasPending, hasCard });
       passed = /\/orders\//.test(orderUrl) && hasPending && hasCard;

@@ -21,7 +21,7 @@ Place an order without logging in as `demo@aussieeats.local`. Checkout collects 
 
 - Do **not** log in first.
 - **Add** first item → `/cart` → Checkout.
-- Fill `guestName` / `guestEmail`, keep default address, select **Card**, fill `4242…` → **Pay & place order**.
+- Fill `guestName` / `guestEmail`, keep the default address, select **Card**, and fill `4242…`, name, expiry, and CVC → **Pay & place order**.
 - Assert `/orders/:id`, guest copy about account history, and `[data-status="pending"]`.
 
 ## Gotchas

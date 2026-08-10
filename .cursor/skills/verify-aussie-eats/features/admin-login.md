@@ -19,7 +19,7 @@ Open `/admin/login` (or `/admin` when unauthenticated).
 ```
 
 - Submit `admin@aussieeats.local` / `admin1234`.
-- Assert URL `/admin`, Admin nav links to `/admin/orders` and `/admin/restaurants`, and Restaurants copy on the page.
+- Assert URL `/admin`, the **Dashboard** heading, numeric Restaurants / Open orders / Customers metrics, and Admin nav links to `/admin/orders` and `/admin/restaurants`.
 
 ## Gotchas
 
