@@ -440,7 +440,7 @@ async function run() {
       const orderUrl = page.url();
       const orderBody = await page.content();
       const hasPending = /data-status="pending"/.test(orderBody);
-      const hasCard = /Visa ending 4242|Card · Visa/i.test(orderBody);
+      const hasCard = /Card · Visa ending 4242/i.test(orderBody);
       await page.screenshot({ path: join(evidenceDir, "03-result-order.png"), fullPage: true });
       steps.push({ result: "order placed", orderUrl, hasPending, hasCard });
       passed = /\/orders\//.test(orderUrl) && hasPending && hasCard;
