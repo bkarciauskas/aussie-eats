@@ -307,6 +307,7 @@ async function run() {
       await page.locator('input[name="email"]').fill("demo@aussieeats.local");
       await page.locator('input[name="password"]').fill("demo1234");
       await page.screenshot({ path: join(evidenceDir, "01-login-form.png"), fullPage: true });
+      steps.push({ action: "filled customer login form" });
       await Promise.all([
         page.waitForURL((u) => !u.pathname.endsWith("/login")),
         page.getByRole("button", { name: /sign in/i }).click(),
@@ -314,7 +315,7 @@ async function run() {
       await page.waitForLoadState("networkidle");
       await page.screenshot({ path: join(evidenceDir, "02-after-login.png"), fullPage: true });
       const logout = await page.getByRole("button", { name: /log out/i }).count();
-      steps.push({ url: page.url(), logoutVisible: logout > 0 });
+      steps.push({ result: "customer signed in", url: page.url(), logoutVisible: logout > 0 });
       passed = logout > 0;
       if (!passed) error = "Log out control not visible after login";
     } else if (feature === "favourites") {
@@ -370,6 +371,7 @@ async function run() {
       await page.locator('input[name="email"]').fill("admin@aussieeats.local");
       await page.locator('input[name="password"]').fill("admin1234");
       await page.screenshot({ path: join(evidenceDir, "01-admin-login.png"), fullPage: true });
+      steps.push({ action: "filled admin login form" });
       await Promise.all([
         page.waitForURL(/\/admin\/?$/),
         page.getByRole("button", { name: /sign in/i }).click(),
@@ -383,7 +385,13 @@ async function run() {
         .count();
       const body = await page.content();
       const hasRestaurantLabel = /Restaurants/i.test(body);
-      steps.push({ url, navOrders, navRestaurants, hasRestaurantLabel });
+      steps.push({
+        result: "admin signed in and dashboard loaded",
+        url,
+        navOrders,
+        navRestaurants,
+        hasRestaurantLabel,
+      });
       passed =
         /\/admin\/?$/.test(new URL(url).pathname) &&
         navOrders > 0 &&
