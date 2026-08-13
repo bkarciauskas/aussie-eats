@@ -10,6 +10,13 @@ const skillDir = join(__dirname, "..");
 const toolsDir = join(skillDir, ".tools");
 const runDir = join(skillDir, ".run");
 const feature = process.argv[2];
+const browserExecutablePath = [
+  process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
+  "/usr/local/bin/google-chrome",
+  "/usr/bin/google-chrome-stable",
+  "/usr/bin/chromium",
+  "/usr/bin/chromium-browser",
+].find((path) => path && existsSync(path));
 
 if (!feature) {
   console.error("usage: drive.mjs <feature-stem>");
@@ -44,12 +51,14 @@ function ensurePlaywright() {
       env: process.env,
     });
     if (install.status !== 0) process.exit(install.status ?? 1);
-    const browser = spawnSync("npx", ["playwright", "install", "chromium"], {
-      cwd: toolsDir,
-      stdio: "inherit",
-      env: process.env,
-    });
-    if (browser.status !== 0) process.exit(browser.status ?? 1);
+    if (!browserExecutablePath) {
+      const browser = spawnSync("npx", ["playwright", "install", "chromium"], {
+        cwd: toolsDir,
+        stdio: "inherit",
+        env: process.env,
+      });
+      if (browser.status !== 0) process.exit(browser.status ?? 1);
+    }
     return createRequire(join(toolsDir, "package.json"))("playwright");
   }
 }
@@ -64,7 +73,10 @@ let passed = false;
 let error = null;
 
 async function run() {
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({
+    headless: true,
+    ...(browserExecutablePath ? { executablePath: browserExecutablePath } : {}),
+  });
   const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
   try {
     if (feature === "home-hero-search") {
