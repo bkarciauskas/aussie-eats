@@ -768,9 +768,23 @@ async function run() {
         fullPage: true,
       });
       steps.push({ result: "menu price persisted", afterText, hasNewPrice });
-      passed = hasNewPrice;
+      let restored = false;
+      if (beforePrice) {
+        const updatedItem = page.locator("section.panel ul li").first();
+        await updatedItem.getByRole("button", { name: "Edit" }).click();
+        const restoreDialog = page.getByRole("dialog", { name: "Edit menu item" });
+        await restoreDialog.locator('input[name="price"]').fill(beforePrice);
+        await restoreDialog.getByRole("button", { name: "Save" }).click();
+        await restoreDialog.waitFor({ state: "hidden", timeout: 15000 });
+        await page.reload({ waitUntil: "networkidle" });
+        const restoredText =
+          (await page.locator("section.panel ul li").first().locator("p.font-medium").first().textContent()) || "";
+        restored = restoredText.includes(`$${beforePrice}`);
+        steps.push({ cleanup: "restored original menu price", restored });
+      }
+      passed = hasNewPrice && restored;
       if (!passed) {
-        error = `menu price not updated; before=${beforePrice} expected=$${nextPrice} after=${afterText}`;
+        error = `menu price verification failed; before=${beforePrice} expected=$${nextPrice} after=${afterText} restored=${restored}`;
       }
     } else {
       throw new Error(`unknown feature: ${feature}`);

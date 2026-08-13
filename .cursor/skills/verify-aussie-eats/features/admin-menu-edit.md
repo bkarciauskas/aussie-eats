@@ -20,9 +20,10 @@ Edit a Harbour Burger Co menu item price and confirm it persists after reload.
 
 - Open Harbour Burger Co menu, bump first item price by $0.50, Save, reload.
 - Assert first line shows the new `$x.xx` price.
+- Restore the original price through the same edit dialog and assert the restore persists.
 
 ## Gotchas
 
 - Dialog accessible name is **Edit menu item** (aria); visible heading may say **Edit item**.
-- Repeated runs keep bumping the shared price — that is expected.
+- The driver restores the original price so scheduled runs do not accumulate changes in the shared demo database.
 - Never pass dollars into client `unitPriceCents` elsewhere; admin form converts dollars → cents.
