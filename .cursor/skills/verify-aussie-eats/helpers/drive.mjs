@@ -10,6 +10,13 @@ const skillDir = join(__dirname, "..");
 const toolsDir = join(skillDir, ".tools");
 const runDir = join(skillDir, ".run");
 const feature = process.argv[2];
+const browserExecutablePath = [
+  process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
+  "/usr/local/bin/google-chrome",
+  "/usr/bin/google-chrome-stable",
+  "/usr/bin/chromium",
+  "/usr/bin/chromium-browser",
+].find((path) => path && existsSync(path));
 
 if (!feature) {
   console.error("usage: drive.mjs <feature-stem>");
@@ -25,26 +32,6 @@ function readRun(name, fallback) {
 const host = process.env.HOST || readRun("host", "127.0.0.1");
 const port = process.env.PORT || readRun("port", "3010");
 const baseUrl = `http://${host}:${port}`;
-
-function installChromium() {
-  console.log("installing chromium for skill-local playwright …");
-  const browser = spawnSync("npx", ["playwright", "install", "chromium"], {
-    cwd: toolsDir,
-    stdio: "inherit",
-    env: process.env,
-  });
-  if (browser.status !== 0) process.exit(browser.status ?? 1);
-}
-
-function findSystemChromium() {
-  return [
-    process.env.CHROME_PATH,
-    "/usr/local/bin/google-chrome",
-    "/usr/bin/google-chrome-stable",
-    "/usr/bin/chromium",
-    "/usr/bin/chromium-browser",
-  ].find((path) => path && existsSync(path));
-}
 
 function ensurePlaywright() {
   try {
@@ -64,16 +51,19 @@ function ensurePlaywright() {
       env: process.env,
     });
     if (install.status !== 0) process.exit(install.status ?? 1);
-    installChromium();
+    if (!browserExecutablePath) {
+      const browser = spawnSync("npx", ["playwright", "install", "chromium"], {
+        cwd: toolsDir,
+        stdio: "inherit",
+        env: process.env,
+      });
+      if (browser.status !== 0) process.exit(browser.status ?? 1);
+    }
     return createRequire(join(toolsDir, "package.json"))("playwright");
   }
 }
 
-const playwright = ensurePlaywright();
-const bundledChromiumPath = playwright.chromium.executablePath();
-let browserExecutablePath = existsSync(bundledChromiumPath) ? undefined : findSystemChromium();
-if (!browserExecutablePath && !existsSync(bundledChromiumPath)) installChromium();
-const { chromium } = playwright;
+const { chromium } = ensurePlaywright();
 const runId = `${feature}-${new Date().toISOString().replace(/[:.]/g, "-")}`;
 const evidenceDir = join(skillDir, "evidence", runId);
 mkdirSync(evidenceDir, { recursive: true });
@@ -83,7 +73,10 @@ let passed = false;
 let error = null;
 
 async function run() {
-  const browser = await chromium.launch({ headless: true, executablePath: browserExecutablePath });
+  const browser = await chromium.launch({
+    headless: true,
+    ...(browserExecutablePath ? { executablePath: browserExecutablePath } : {}),
+  });
   const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
   try {
     if (feature === "home-hero-search") {
@@ -775,9 +768,23 @@ async function run() {
         fullPage: true,
       });
       steps.push({ result: "menu price persisted", afterText, hasNewPrice });
-      passed = hasNewPrice;
+      let restored = false;
+      if (beforePrice) {
+        const updatedItem = page.locator("section.panel ul li").first();
+        await updatedItem.getByRole("button", { name: "Edit" }).click();
+        const restoreDialog = page.getByRole("dialog", { name: "Edit menu item" });
+        await restoreDialog.locator('input[name="price"]').fill(beforePrice);
+        await restoreDialog.getByRole("button", { name: "Save" }).click();
+        await restoreDialog.waitFor({ state: "hidden", timeout: 15000 });
+        await page.reload({ waitUntil: "networkidle" });
+        const restoredText =
+          (await page.locator("section.panel ul li").first().locator("p.font-medium").first().textContent()) || "";
+        restored = restoredText.includes(`$${beforePrice}`);
+        steps.push({ cleanup: "restored original menu price", restored });
+      }
+      passed = hasNewPrice && restored;
       if (!passed) {
-        error = `menu price not updated; before=${beforePrice} expected=$${nextPrice} after=${afterText}`;
+        error = `menu price verification failed; before=${beforePrice} expected=$${nextPrice} after=${afterText} restored=${restored}`;
       }
     } else {
       throw new Error(`unknown feature: ${feature}`);
