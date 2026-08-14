@@ -26,6 +26,16 @@ const host = process.env.HOST || readRun("host", "127.0.0.1");
 const port = process.env.PORT || readRun("port", "3010");
 const baseUrl = `http://${host}:${port}`;
 
+function installChromium() {
+  console.log("installing chromium for skill-local playwright …");
+  const browser = spawnSync("npx", ["playwright", "install", "chromium"], {
+    cwd: toolsDir,
+    stdio: "inherit",
+    env: process.env,
+  });
+  if (browser.status !== 0) process.exit(browser.status ?? 1);
+}
+
 function ensurePlaywright() {
   try {
     return createRequire(join(toolsDir, "package.json"))("playwright");
@@ -44,17 +54,14 @@ function ensurePlaywright() {
       env: process.env,
     });
     if (install.status !== 0) process.exit(install.status ?? 1);
-    const browser = spawnSync("npx", ["playwright", "install", "chromium"], {
-      cwd: toolsDir,
-      stdio: "inherit",
-      env: process.env,
-    });
-    if (browser.status !== 0) process.exit(browser.status ?? 1);
+    installChromium();
     return createRequire(join(toolsDir, "package.json"))("playwright");
   }
 }
 
-const { chromium } = ensurePlaywright();
+const playwright = ensurePlaywright();
+if (!existsSync(playwright.chromium.executablePath())) installChromium();
+const { chromium } = playwright;
 const runId = `${feature}-${new Date().toISOString().replace(/[:.]/g, "-")}`;
 const evidenceDir = join(skillDir, "evidence", runId);
 mkdirSync(evidenceDir, { recursive: true });
