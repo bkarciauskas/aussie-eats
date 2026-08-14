@@ -36,6 +36,16 @@ function installChromium() {
   if (browser.status !== 0) process.exit(browser.status ?? 1);
 }
 
+function findSystemChromium() {
+  return [
+    process.env.CHROME_PATH,
+    "/usr/local/bin/google-chrome",
+    "/usr/bin/google-chrome-stable",
+    "/usr/bin/chromium",
+    "/usr/bin/chromium-browser",
+  ].find((path) => path && existsSync(path));
+}
+
 function ensurePlaywright() {
   try {
     return createRequire(join(toolsDir, "package.json"))("playwright");
@@ -60,7 +70,9 @@ function ensurePlaywright() {
 }
 
 const playwright = ensurePlaywright();
-if (!existsSync(playwright.chromium.executablePath())) installChromium();
+const bundledChromiumPath = playwright.chromium.executablePath();
+let browserExecutablePath = existsSync(bundledChromiumPath) ? undefined : findSystemChromium();
+if (!browserExecutablePath && !existsSync(bundledChromiumPath)) installChromium();
 const { chromium } = playwright;
 const runId = `${feature}-${new Date().toISOString().replace(/[:.]/g, "-")}`;
 const evidenceDir = join(skillDir, "evidence", runId);
@@ -71,7 +83,7 @@ let passed = false;
 let error = null;
 
 async function run() {
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({ headless: true, executablePath: browserExecutablePath });
   const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
   try {
     if (feature === "home-hero-search") {
