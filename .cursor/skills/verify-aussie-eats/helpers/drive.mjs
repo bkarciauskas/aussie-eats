@@ -633,7 +633,6 @@ async function run() {
         error = `order status did not advance: pending ${pendingBefore}→${pendingAfter}, preparing ${preparingBefore}→${preparingAfter}`;
       }
     } else if (feature === "live-order-status") {
-      // Customer places an order, keeps detail open; admin advances status; poll catches it.
       await page.goto(baseUrl + "/login?next=/restaurants/harbour-burger-co", {
         waitUntil: "networkidle",
       });
@@ -644,19 +643,6 @@ async function run() {
         page.getByRole("button", { name: /sign in/i }).click(),
       ]);
       await page.waitForLoadState("networkidle");
-      await page.evaluate(() => {
-        localStorage.setItem(
-          "aussieeats_location_v1",
-          JSON.stringify({
-            label: "Sydney",
-            suburb: "Sydney",
-            state: "NSW",
-            postcode: "2000",
-            lat: -33.8688,
-            lng: 151.2093,
-          }),
-        );
-      });
 
       const addButtons = page.getByRole("button", { name: "Add", exact: true });
       await addButtons.first().waitFor({ state: "visible", timeout: 15000 });
@@ -678,6 +664,7 @@ async function run() {
       await page.waitForSelector('[data-live-order-status="pending"]', { timeout: 10000 });
       await page.waitForSelector('[data-live-polling="true"]', { timeout: 5000 });
       await page.waitForSelector("[data-courier-eta]", { timeout: 10000 });
+      const beforeEta = await page.locator("[data-courier-eta]").getAttribute("data-courier-eta");
       await page.screenshot({
         path: join(evidenceDir, "01-action-customer-order-live.png"),
         fullPage: true,
@@ -687,6 +674,7 @@ async function run() {
         orderUrl,
         orderId,
         livePending: true,
+        eta: beforeEta,
       });
 
       const adminContext = await browser.newContext();
@@ -722,6 +710,7 @@ async function run() {
       await page.waitForSelector('[data-live-order-status="preparing"]', { timeout: 12000 });
       const liveStatus = await page.locator("[data-live-order-status]").getAttribute("data-live-order-status");
       const eta = await page.locator("[data-courier-eta]").getAttribute("data-courier-eta");
+      const etaDecreased = Number.parseInt(eta ?? "", 10) < Number.parseInt(beforeEta ?? "", 10);
       await page.screenshot({
         path: join(evidenceDir, "03-result-customer-preparing.png"),
         fullPage: true,
@@ -730,10 +719,11 @@ async function run() {
         result: "customer view picked up preparing via poll",
         liveStatus,
         eta,
+        etaDecreased,
       });
-      passed = liveStatus === "preparing" && Boolean(eta);
+      passed = liveStatus === "preparing" && Boolean(eta) && etaDecreased;
       if (!passed) {
-        error = `live-order-status failed: liveStatus=${liveStatus} eta=${eta} orderUrl=${orderUrl}`;
+        error = `live-order-status failed: liveStatus=${liveStatus} eta=${beforeEta}→${eta} orderUrl=${orderUrl}`;
       }
     } else if (feature === "admin-menu-edit") {
       await page.goto(baseUrl + "/admin/login", { waitUntil: "networkidle" });
