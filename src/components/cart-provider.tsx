@@ -9,6 +9,9 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useDemoEnabled } from "@/components/demo-provider";
+import { cartSubtotalFromLines } from "@/lib/demo/cart-line-totals";
+import { CART_SUBTOTAL_IGNORES_QTY } from "@/lib/demo/scenarios";
 import { cartSubtotalCents, type CartItem, type CartState } from "@/lib/cart-types";
 import { MAX_LINE_QUANTITY } from "@/lib/orders";
 
@@ -131,7 +134,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const clearCart = useCallback(() => setCart(emptyCart), []);
 
-  const subtotalCents = useMemo(() => cartSubtotalCents(cart.items), [cart.items]);
+  const skipQuantity = useDemoEnabled(CART_SUBTOTAL_IGNORES_QTY);
+  const subtotalCents = useMemo(
+    () =>
+      skipQuantity ? cartSubtotalFromLines(cart.items) : cartSubtotalCents(cart.items),
+    [cart.items, skipQuantity],
+  );
   const itemCount = useMemo(
     () => cart.items.reduce((sum, i) => sum + i.quantity, 0),
     [cart.items],

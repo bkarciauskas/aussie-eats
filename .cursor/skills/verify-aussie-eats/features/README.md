@@ -18,6 +18,7 @@ Verification recipes from the user's point of view. Each file is a complete proo
 | Admin login + dashboard | [admin-login.md](./admin-login.md) | `/admin/login` → `/admin` |
 | Admin order status | [admin-order-status.md](./admin-order-status.md) | `/admin/orders` pending → preparing |
 | Admin menu edit | [admin-menu-edit.md](./admin-menu-edit.md) | `/admin/restaurants/…/menu` price edit |
+| Demo lab | [demo-lab.md](./demo-lab.md) | `/demo-admin` cart quantity-omit toggle |
 
 Start with the feature that matches the change under test. `home-hero-search` is the default smoke proof for storefront search wiring.
 

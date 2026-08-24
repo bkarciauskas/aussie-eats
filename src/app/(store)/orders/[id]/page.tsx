@@ -104,7 +104,7 @@ export default async function OrderDetailPage({ params }: Props) {
         <div className="border-t border-[var(--ae-line)] pt-3 text-sm">
           <div className="flex justify-between">
             <span>Subtotal</span>
-            <span>{formatAUD(order.subtotalCents)}</span>
+            <span data-order-subtotal={order.subtotalCents}>{formatAUD(order.subtotalCents)}</span>
           </div>
           <div className="mt-1 flex justify-between">
             <span>Delivery</span>

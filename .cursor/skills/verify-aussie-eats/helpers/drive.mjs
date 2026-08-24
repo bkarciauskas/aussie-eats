@@ -760,6 +760,138 @@ async function run() {
       if (!passed) {
         error = `menu price not updated; before=${beforePrice} expected=$${nextPrice} after=${afterText}`;
       }
+    } else if (feature === "demo-lab") {
+      await page.goto(baseUrl + "/demo-admin", { waitUntil: "networkidle" });
+      const toggle = page.locator('[data-demo-toggle="cart-subtotal-ignores-qty"]');
+      await toggle.waitFor({ state: "visible" });
+      if ((await toggle.getAttribute("aria-checked")) !== "true") {
+        await toggle.click();
+      }
+      await page.waitForFunction(() => {
+        const el = document.querySelector('[data-demo-toggle="cart-subtotal-ignores-qty"]');
+        return el instanceof HTMLElement && el.getAttribute("aria-checked") === "true";
+      });
+      await page.screenshot({ path: join(evidenceDir, "01-action-toggle-on.png"), fullPage: true });
+      steps.push({ action: "enabled cart-subtotal-ignores-qty" });
+
+      await page.goto(baseUrl + "/login?next=/restaurants/harbour-burger-co", {
+        waitUntil: "networkidle",
+      });
+      await page.locator('input[name="email"]').fill("demo@aussieeats.local");
+      await page.locator('input[name="password"]').fill("demo1234");
+      await Promise.all([
+        page.waitForURL(/\/restaurants\/harbour-burger-co/),
+        page.getByRole("button", { name: /sign in/i }).click(),
+      ]);
+      await page.waitForLoadState("networkidle");
+      const addButtons = page.getByRole("button", { name: "Add", exact: true });
+      await addButtons.first().waitFor({ state: "visible", timeout: 15000 });
+      await addButtons.first().click();
+      await page.getByText(/Added ·/i).first().waitFor({ timeout: 5000 });
+
+      await page.goto(baseUrl + "/cart", { waitUntil: "networkidle" });
+      await page.getByRole("button", { name: /^Increase / }).first().click();
+      const unitCents = Number(
+        await page.locator("[data-cart-line-unit]").first().getAttribute("data-cart-line-unit"),
+      );
+      const buggySubtotal = Number(
+        await page.locator("[data-cart-subtotal]").getAttribute("data-cart-subtotal"),
+      );
+      const bannerOn = (await page.locator("[data-demo-banner]").count()) > 0;
+      await page.screenshot({ path: join(evidenceDir, "02-result-buggy-cart.png"), fullPage: true });
+      steps.push({
+        result: "cart subtotal skipped quantity",
+        unitCents,
+        buggySubtotal,
+        bannerOn,
+      });
+
+      await page.goto(baseUrl + "/demo-admin", { waitUntil: "networkidle" });
+      const toggleOff = page.locator('[data-demo-toggle="cart-subtotal-ignores-qty"]');
+      if ((await toggleOff.getAttribute("aria-checked")) === "true") {
+        await toggleOff.click();
+      }
+      await page.waitForFunction(() => {
+        const el = document.querySelector('[data-demo-toggle="cart-subtotal-ignores-qty"]');
+        return el instanceof HTMLElement && el.getAttribute("aria-checked") === "false";
+      });
+
+      await page.goto(baseUrl + "/cart", { waitUntil: "networkidle" });
+      const healthySubtotal = Number(
+        await page.locator("[data-cart-subtotal]").getAttribute("data-cart-subtotal"),
+      );
+      const bannerOff = (await page.locator("[data-demo-banner]").count()) === 0;
+      await page.screenshot({
+        path: join(evidenceDir, "03-result-healthy-cart.png"),
+        fullPage: true,
+      });
+      steps.push({
+        result: "same cart totals correctly after toggle off",
+        healthySubtotal,
+        bannerOff,
+      });
+
+      await page.goto(baseUrl + "/demo-admin", { waitUntil: "networkidle" });
+      const toggleOnAgain = page.locator('[data-demo-toggle="cart-subtotal-ignores-qty"]');
+      if ((await toggleOnAgain.getAttribute("aria-checked")) !== "true") {
+        await toggleOnAgain.click();
+      }
+      await page.waitForFunction(() => {
+        const el = document.querySelector('[data-demo-toggle="cart-subtotal-ignores-qty"]');
+        return el instanceof HTMLElement && el.getAttribute("aria-checked") === "true";
+      });
+
+      await page.goto(baseUrl + "/checkout", { waitUntil: "networkidle" });
+      const checkoutSubtotal = Number(
+        await page.locator("[data-checkout-subtotal]").getAttribute("data-checkout-subtotal"),
+      );
+      const checkoutLine = Number(
+        await page.locator("[data-checkout-line-cents]").first().getAttribute("data-checkout-line-cents"),
+      );
+      await page.locator('input[value="card"]').check();
+      await page.getByPlaceholder("4242 4242 4242 4242").fill("4242 4242 4242 4242");
+      await page.getByPlaceholder("Taylor Smith").fill("Demo User");
+      await page.locator('input[autocomplete="cc-exp"]').fill("12/30");
+      await page.locator('input[autocomplete="cc-csc"]').fill("123");
+      await page.screenshot({
+        path: join(evidenceDir, "04-action-checkout-mismatch.png"),
+        fullPage: true,
+      });
+      steps.push({
+        result: "checkout line disagrees with subtotal",
+        checkoutSubtotal,
+        checkoutLine,
+      });
+
+      await Promise.all([
+        page.waitForURL(/\/orders\/[^/]+/),
+        page.getByRole("button", { name: /Pay & place order/i }).click(),
+      ]);
+      await page.waitForLoadState("networkidle");
+      const orderSubtotal = Number(
+        await page.locator("[data-order-subtotal]").getAttribute("data-order-subtotal"),
+      );
+      await page.screenshot({
+        path: join(evidenceDir, "05-result-order-healthy.png"),
+        fullPage: true,
+      });
+      steps.push({ result: "placed order used Mongo line math", orderSubtotal });
+
+      await page.goto(baseUrl + "/admin/login", { waitUntil: "networkidle" });
+      const adminHeading = await page.getByRole("heading", { name: /Admin/i }).count();
+      const demoLabOnAdmin = await page.getByRole("heading", { name: "Demo lab" }).count();
+      await page.screenshot({ path: join(evidenceDir, "06-admin-unchanged.png"), fullPage: true });
+      steps.push({ result: "admin login unchanged", adminHeading, demoLabOnAdmin });
+
+      const qtyBug = unitCents > 0 && buggySubtotal === unitCents;
+      const recovered = healthySubtotal === unitCents * 2;
+      const checkoutMismatch = checkoutSubtotal === unitCents && checkoutLine === unitCents * 2;
+      const orderHealthy = orderSubtotal === unitCents * 2;
+      passed =
+        qtyBug && recovered && bannerOn && bannerOff && checkoutMismatch && orderHealthy && demoLabOnAdmin === 0;
+      if (!passed) {
+        error = `demo-lab assertions failed qtyBug=${qtyBug} recovered=${recovered} bannerOn=${bannerOn} bannerOff=${bannerOff} checkoutMismatch=${checkoutMismatch} orderHealthy=${orderHealthy} demoLabOnAdmin=${demoLabOnAdmin} unit=${unitCents} buggy=${buggySubtotal} healthy=${healthySubtotal} checkoutSub=${checkoutSubtotal} checkoutLine=${checkoutLine} orderSub=${orderSubtotal}`;
+      }
     } else {
       throw new Error(`unknown feature: ${feature}`);
     }

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Fraunces, Source_Sans_3 } from "next/font/google";
 import { CartProvider } from "@/components/cart-provider";
+import { DemoProvider } from "@/components/demo-provider";
 import { LocationProvider } from "@/components/location-provider";
 import "./globals.css";
 
@@ -27,7 +28,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="en-AU">
       <body className={`${display.variable} ${body.variable} antialiased`}>
         <LocationProvider>
-          <CartProvider>{children}</CartProvider>
+          <DemoProvider>
+            <CartProvider>{children}</CartProvider>
+          </DemoProvider>
         </LocationProvider>
       </body>
     </html>
