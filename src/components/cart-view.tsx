@@ -41,7 +41,9 @@ export function CartView() {
             <li key={item.menuItemId} className="flex items-center justify-between gap-4 py-4">
               <div>
                 <p className="font-medium">{item.name}</p>
-                <p className="text-sm text-[var(--ae-ink-muted)]">{formatAUD(item.unitPriceCents)}</p>
+                <p className="text-sm text-[var(--ae-ink-muted)]" data-cart-line-unit={item.unitPriceCents}>
+                  {formatAUD(item.unitPriceCents)}
+                </p>
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -69,7 +71,7 @@ export function CartView() {
       <aside className="panel h-fit space-y-3">
         <div className="flex justify-between text-sm">
           <span>Subtotal</span>
-          <span>{formatAUD(subtotalCents)}</span>
+          <span data-cart-subtotal={subtotalCents}>{formatAUD(subtotalCents)}</span>
         </div>
         <div className="flex justify-between text-sm">
           <span>Delivery</span>
@@ -85,7 +87,7 @@ export function CartView() {
         ) : null}
         <div className="flex justify-between border-t border-[var(--ae-line)] pt-3 font-semibold">
           <span>Total</span>
-          <span>{formatAUD(totalCents)}</span>
+          <span data-cart-total={totalCents}>{formatAUD(totalCents)}</span>
         </div>
         {subtotalCents < cart.minOrderCents ? (
           <p className="text-sm text-[var(--ae-danger)]">

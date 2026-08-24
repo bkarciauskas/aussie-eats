@@ -1,6 +1,6 @@
 # AussieEats
 
-Local-only multi-vendor food delivery demo (customer storefront + `/admin`) built with **Next.js App Router**, **TypeScript**, **Tailwind CSS**, and **FastAPI + MongoDB**.
+Local-only multi-vendor food delivery demo (customer storefront + `/admin`) built with **Next.js App Router**, **TypeScript**, **Tailwind CSS**, and **FastAPI + MongoDB**. `/demo-admin` is a presenter control plane for Cursor capability demos. It is not the restaurant admin.
 
 ## Requirements
 
@@ -84,6 +84,7 @@ npm run db:export-catalog              # rewrite catalog_snapshot.json from Mong
 6. Open `/admin/login` → `admin@aussieeats.local` / `admin1234`.
 7. Dashboard shows counts; **Orders** → advance status (`pending` → `preparing` → …).
 8. **Restaurants** → pick one → **Menu** → edit an item price → save → verify on the storefront menu.
+9. Open **Demo lab** (`/demo-admin`) → turn on **Cart subtotal skips quantity** → add an item, set qty 2, note the cart total → place the order and compare confirmation → turn the scenario off. The same browser is healthy again. No git restore.
 
 ## Smoke checklist
 
@@ -99,6 +100,7 @@ npm run db:export-catalog              # rewrite catalog_snapshot.json from Mong
 - [ ] AUD formatting (`$x.xx`) and AU address fields (suburb / NSW / postcode / +61) appear
 - [ ] Admin login blocks non-admins from `/admin`
 - [ ] Admin can edit a menu price and change an order’s status
+- [ ] `/demo-admin` can turn **Cart subtotal skips quantity** on and off without touching git
 - [ ] `db:seed` does not delete an imported Places catalog
 
 ## Architecture notes
@@ -108,6 +110,7 @@ npm run db:export-catalog              # rewrite catalog_snapshot.json from Mong
 - **Browse:** FastAPI applies `city` / `cuisine` / `q` / `diet` on `GET /restaurants`; Next still owns open-now and distance/ETA
 - **Auth:** FastAPI JWT via `src/lib/api.ts`; iron-session stores the Bearer token (`CUSTOMER` / `ADMIN`). Guest checkout uses `POST /auth/guest`
 - **Cart:** client React context + `localStorage`; server writes orders on checkout (guest or logged-in)
+- **Demo lab:** `/demo-admin` writes `aussieeats_demo_v1`; cart subtotal can swap in `cartSubtotalFromLines` for a Cursor Debug demo
 - **Orders:** `/orders/[id]` soft-polls status every 3s with a mock courier ETA (not a live courier feed)
 - **Money:** integer cents (`unitPriceCents` / `priceCents`); display with `formatAUD` (`en-AU`)
 - **Location:** demo city pins in `localStorage`; city filter matches Mongo labels via `find_demo_city` / `matchesRestaurantCity`

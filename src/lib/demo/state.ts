@@ -1,7 +1,6 @@
 import { isDemoScenarioId, type DemoScenarioId } from "./scenarios";
 
 export const DEMO_STORAGE_KEY = "aussieeats_demo_v1";
-export const DEMO_STATE_EVENT = "aussieeats-demo-change";
 
 export type DemoState = {
   enabled: ReadonlySet<DemoScenarioId>;

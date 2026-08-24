@@ -226,14 +226,16 @@ export function CheckoutForm({
               <span>
                 {item.quantity}× {item.name}
               </span>
-              <span>{formatAUD(item.unitPriceCents * item.quantity)}</span>
+              <span data-checkout-line-cents={item.unitPriceCents * item.quantity}>
+                {formatAUD(item.unitPriceCents * item.quantity)}
+              </span>
             </li>
           ))}
         </ul>
         <div className="border-t border-[var(--ae-line)] pt-3 text-sm">
           <div className="flex justify-between">
             <span>Subtotal</span>
-            <span>{formatAUD(subtotalCents)}</span>
+            <span data-checkout-subtotal={subtotalCents}>{formatAUD(subtotalCents)}</span>
           </div>
           <div className="mt-1 flex justify-between">
             <span>Delivery</span>

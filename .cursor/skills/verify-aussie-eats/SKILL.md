@@ -68,6 +68,7 @@ Stable handles (prefer these):
 | Wallet checkout | `/checkout` → `input[value="apple_pay"]` / `input[value="google_pay"]` |
 | Admin order status | `/admin/orders` → `→ Preparing` (etc.) on pending rows |
 | Admin menu edit | `/admin/restaurants` → Menu → Edit → Save (`dialog[name="Edit menu item"]`) |
+| Demo lab | `/demo-admin` → `[data-demo-toggle="cart-subtotal-ignores-qty"]` |
 
 Feature recipes live in `features/`. Pick the file that matches the change; do not invent a shorter path that skips user-visible steps listed there. Seed landmark: **Harbour Burger Co** (`harbour-burger-co`) is **Sydney**, not Melbourne.
 
