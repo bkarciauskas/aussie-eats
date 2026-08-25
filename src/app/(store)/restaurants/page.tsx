@@ -17,6 +17,11 @@ import {
   parseDietQuery,
   serializeDietQuery,
 } from "@/lib/dietary";
+import {
+  parsePage,
+  restaurantListPageHref,
+  totalPages,
+} from "@/lib/restaurant-list";
 
 type Props = {
   searchParams: Promise<{
@@ -29,6 +34,7 @@ type Props = {
     open?: string;
     diet?: string;
     allergy?: string;
+    page?: string;
   }>;
 };
 
@@ -43,6 +49,7 @@ export default async function RestaurantsPage({ searchParams }: Props) {
     open = "",
     diet = "",
     allergy = "",
+    page: pageRaw,
   } = await searchParams;
   const { q, city: cityFilter } = resolveRestaurantQuery({ q: rawQ, city });
   const cityLabel = demoCityLabel(cityFilter);
@@ -51,17 +58,20 @@ export default async function RestaurantsPage({ searchParams }: Props) {
   const origin = parseOrigin(lat, lng);
   const cityPin = findDemoCity(cityFilter);
   const etaOrigin = origin ?? (cityPin ? { lat: cityPin.lat, lng: cityPin.lng } : null);
+  const page = parsePage(pageRaw);
 
-  const [{ restaurants, availableCuisines }, favouriteIds] = await Promise.all([
-    listRestaurants({
-      activeOnly: true,
-      city: cityFilter || undefined,
-      cuisine: cuisine || undefined,
-      q: q || undefined,
-      diet: activeDiets.length > 0 ? serializeDietQuery(activeDiets) : undefined,
-    }),
-    listFavouriteRestaurantIds(),
-  ]);
+  const [{ restaurants, availableCuisines, page: listPage, pageSize, total }, favouriteIds] =
+    await Promise.all([
+      listRestaurants({
+        activeOnly: true,
+        city: cityFilter || undefined,
+        cuisine: cuisine || undefined,
+        q: q || undefined,
+        diet: activeDiets.length > 0 ? serializeDietQuery(activeDiets) : undefined,
+        page,
+      }),
+      listFavouriteRestaurantIds(),
+    ]);
 
   const filtered = restaurants.filter((r) => {
     if (!openNowOnly) return true;
@@ -124,6 +134,27 @@ export default async function RestaurantsPage({ searchParams }: Props) {
   const dietSummary =
     activeDiets.length > 0 ? ` · ${dietLabels(activeDiets).join(", ")}` : "";
 
+  const listParams = new URLSearchParams();
+  if (q) listParams.set("q", q);
+  if (cuisine) listParams.set("cuisine", cuisine);
+  if (cityFilter) listParams.set("city", cityFilter);
+  if (lat) listParams.set("lat", lat);
+  if (lng) listParams.set("lng", lng);
+  if (place) listParams.set("place", place);
+  if (openNowOnly) listParams.set("open", "1");
+  applyDietSearchParams(listParams, activeDiets);
+
+  const pages = totalPages(total, pageSize);
+  const pagination =
+    total > pageSize
+      ? {
+          page: listPage,
+          pages,
+          prevHref: listPage > 1 ? restaurantListPageHref(listParams, listPage - 1) : null,
+          nextHref: listPage < pages ? restaurantListPageHref(listParams, listPage + 1) : null,
+        }
+      : null;
+
   return (
     <div className="page-shell">
       <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -158,6 +189,7 @@ export default async function RestaurantsPage({ searchParams }: Props) {
           origin={origin}
           locationLabel={locationLabel}
           favouriteIds={favouriteIds}
+          pagination={pagination}
         />
       </Suspense>
     </div>

@@ -81,6 +81,7 @@ export function RestaurantFilters({
     if (openNow) params.set("open", "1");
     else params.delete("open");
     applyDietSearchParams(params, next.diets ?? current.diets);
+    params.delete("page");
     startTransition(() => {
       router.push(`/restaurants?${params.toString()}`);
     });

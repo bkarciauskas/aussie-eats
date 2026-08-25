@@ -4,6 +4,7 @@ import {
   dietaryCatalogVenueSchema,
   orderSchema,
   restaurantDetailSchema,
+  restaurantListResponseSchema,
   restaurantSummarySchema,
 } from "./api-schemas";
 
@@ -46,6 +47,51 @@ test("restaurantSummarySchema accepts FastAPI camelCase payloads", () => {
   });
   assert.equal(parsed.slug, "bondi-burger-co");
   assert.ok(parsed.createdAt instanceof Date);
+});
+
+test("restaurantListResponseSchema requires page window fields", () => {
+  const summary = {
+    id: "r1",
+    name: "Bondi Burger Co",
+    slug: "bondi-burger-co",
+    description: "Burgers",
+    image: "/images/restaurants/burger.jpg",
+    cuisineTags: '["Burgers"]',
+    dietaryTags: "[]",
+    city: "Sydney",
+    suburb: "Bondi",
+    lat: -33.89,
+    lng: 151.27,
+    deliveryFeeCents: 499,
+    minOrderCents: 1500,
+    isOpen: true,
+    isActive: true,
+    rating: 4.6,
+    userRatingCount: 12,
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+  };
+  const parsed = restaurantListResponseSchema.parse({
+    restaurants: [summary],
+    availableCuisines: ["Burgers"],
+    page: 1,
+    pageSize: 10,
+    total: 1,
+  });
+  assert.equal(parsed.page, 1);
+  assert.equal(parsed.pageSize, 10);
+  assert.equal(parsed.total, 1);
+  assert.equal(parsed.restaurants.length, 1);
+
+  assert.throws(() =>
+    restaurantListResponseSchema.parse({
+      restaurants: [],
+      availableCuisines: [],
+      page: 0,
+      pageSize: 10,
+      total: 0,
+    }),
+  );
 });
 
 test("restaurantDetailSchema includes nested categories and reviews", () => {

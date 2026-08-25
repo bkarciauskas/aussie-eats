@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { RestaurantCard } from "@/components/restaurant-card";
 import { LocationSearch } from "@/components/location-search";
@@ -30,16 +31,25 @@ export type ExplorerRestaurant = {
   hrefQuery?: string;
 };
 
+export type RestaurantListPagination = {
+  page: number;
+  pages: number;
+  prevHref: string | null;
+  nextHref: string | null;
+};
+
 export function RestaurantsExplorer({
   restaurants,
   origin,
   locationLabel,
   favouriteIds,
+  pagination = null,
 }: {
   restaurants: ExplorerRestaurant[];
   origin: Origin | null;
   locationLabel?: string;
   favouriteIds: string[];
+  pagination?: RestaurantListPagination | null;
 }) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const favouriteIdSet = new Set(favouriteIds);
@@ -111,6 +121,31 @@ export function RestaurantsExplorer({
             ))}
           </div>
         )}
+
+        {pagination ? (
+          <nav
+            aria-label="Restaurant list pages"
+            className="mt-8 flex flex-wrap items-center justify-between gap-3"
+          >
+            {pagination.prevHref ? (
+              <Link href={pagination.prevHref} className="btn-secondary">
+                Previous
+              </Link>
+            ) : (
+              <span className="btn-secondary pointer-events-none opacity-40">Previous</span>
+            )}
+            <p className="font-display text-[var(--ae-ink-muted)]">
+              Page {pagination.page} of {pagination.pages}
+            </p>
+            {pagination.nextHref ? (
+              <Link href={pagination.nextHref} className="btn-secondary">
+                Next
+              </Link>
+            ) : (
+              <span className="btn-secondary pointer-events-none opacity-40">Next</span>
+            )}
+          </nav>
+        ) : null}
       </div>
     </MapProvider>
   );

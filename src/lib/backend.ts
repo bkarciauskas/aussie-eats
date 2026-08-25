@@ -29,6 +29,7 @@ export async function listRestaurants(options?: {
   cuisine?: string;
   q?: string;
   diet?: string;
+  page?: number;
 }): Promise<RestaurantListResponse> {
   const params = new URLSearchParams();
   if (options?.activeOnly === false) params.set("activeOnly", "false");
@@ -36,6 +37,9 @@ export async function listRestaurants(options?: {
   if (options?.cuisine) params.set("cuisine", options.cuisine);
   if (options?.q) params.set("q", options.q);
   if (options?.diet) params.set("diet", options.diet);
+  if (options?.page != null && options.page > 1) {
+    params.set("page", String(options.page));
+  }
   const query = params.toString();
   return apiFetch(`/restaurants${query ? `?${query}` : ""}`, {
     schema: restaurantListResponseSchema,
