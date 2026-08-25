@@ -105,46 +105,48 @@ export function LocationSearch({ locationLabel }: { locationLabel?: string }) {
   }, [setLocation]);
 
   return (
-    <div className="panel mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
-      <div className="field flex-1">
-        <span>Find restaurants near</span>
-        {hasMapsKey ? (
-          <PlacesAutocomplete
-            onPick={setLocation}
-            disabled={pending}
-          />
-        ) : (
-          <input
-            type="text"
-            className="w-full"
-            placeholder="Address search needs a Google Maps key — use the button →"
-            disabled
-            aria-label="Search by address (disabled without Maps key)"
-          />
-        )}
-      </div>
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          className="btn-primary whitespace-nowrap"
-          onClick={useMyLocation}
-          disabled={pending || geoState === "locating"}
-        >
-          {geoState === "locating" ? "Locating…" : "Use my location"}
-        </button>
-        {hasLocation ? (
+    <div className="panel mb-6 flex flex-col gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+        <div className="field min-w-0 flex-1">
+          <span>Find restaurants near</span>
+          {hasMapsKey ? (
+            <PlacesAutocomplete
+              onPick={setLocation}
+              disabled={pending}
+            />
+          ) : (
+            <input
+              type="text"
+              className="w-full"
+              placeholder="Address search needs a Google Maps key — use the button →"
+              disabled
+              aria-label="Search by address (disabled without Maps key)"
+            />
+          )}
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
           <button
             type="button"
-            className="btn-secondary whitespace-nowrap"
-            onClick={() => setLocation(null)}
-            disabled={pending}
+            className="btn-primary whitespace-nowrap"
+            onClick={useMyLocation}
+            disabled={pending || geoState === "locating"}
           >
-            Clear
+            {geoState === "locating" ? "Locating…" : "Use my location"}
           </button>
-        ) : null}
+          {hasLocation ? (
+            <button
+              type="button"
+              className="btn-secondary whitespace-nowrap"
+              onClick={() => setLocation(null)}
+              disabled={pending}
+            >
+              Clear
+            </button>
+          ) : null}
+        </div>
       </div>
       {geoState === "error" ? (
-        <p className="text-xs text-[var(--ae-danger)] sm:w-full">
+        <p className="text-xs text-[var(--ae-danger)]">
           Could not get your location. Allow location access or search by address.
         </p>
       ) : null}
