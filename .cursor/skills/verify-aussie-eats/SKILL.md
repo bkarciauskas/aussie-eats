@@ -41,7 +41,7 @@ Checks: FastAPI `GET /health` succeeds, `.run/port` exists (or default), Next ho
 
 ## Drive
 
-Harness: **Playwright Chromium** via `helpers/drive.mjs` (installs `playwright` into the skill-local `.tools/` on first use; browsers land in the user Playwright cache).
+Harness: **Playwright Chromium** via `helpers/drive.mjs` (installs `playwright` into the skill-local `.tools/` on first use; uses `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` or a common system Chrome/Chromium install before downloading Chromium into the user Playwright cache).
 
 ```bash
 # Prove one mapped feature (name matches features/*.md stem)

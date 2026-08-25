@@ -10,6 +10,14 @@ const skillDir = join(__dirname, "..");
 const toolsDir = join(skillDir, ".tools");
 const runDir = join(skillDir, ".run");
 const feature = process.argv[2];
+const browserExecutablePath = [
+  process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
+  process.env.CHROME_PATH,
+  "/usr/local/bin/google-chrome",
+  "/usr/bin/google-chrome-stable",
+  "/usr/bin/chromium",
+  "/usr/bin/chromium-browser",
+].find((path) => path && existsSync(path));
 
 if (!feature) {
   console.error("usage: drive.mjs <feature-stem>");
@@ -26,9 +34,22 @@ const host = process.env.HOST || readRun("host", "127.0.0.1");
 const port = process.env.PORT || readRun("port", "3010");
 const baseUrl = `http://${host}:${port}`;
 
+function installChromium() {
+  console.log("installing chromium for skill-local playwright …");
+  const install = spawnSync("npx", ["playwright", "install", "chromium"], {
+    cwd: toolsDir,
+    stdio: "inherit",
+    env: process.env,
+  });
+  if (install.status !== 0) process.exit(install.status ?? 1);
+}
+
 function ensurePlaywright() {
+  const requirePlaywright = () =>
+    createRequire(join(toolsDir, "package.json"))("playwright");
+  let playwright;
   try {
-    return createRequire(join(toolsDir, "package.json"))("playwright");
+    playwright = requirePlaywright();
   } catch {
     mkdirSync(toolsDir, { recursive: true });
     if (!existsSync(join(toolsDir, "package.json"))) {
@@ -44,14 +65,12 @@ function ensurePlaywright() {
       env: process.env,
     });
     if (install.status !== 0) process.exit(install.status ?? 1);
-    const browser = spawnSync("npx", ["playwright", "install", "chromium"], {
-      cwd: toolsDir,
-      stdio: "inherit",
-      env: process.env,
-    });
-    if (browser.status !== 0) process.exit(browser.status ?? 1);
-    return createRequire(join(toolsDir, "package.json"))("playwright");
+    playwright = requirePlaywright();
   }
+  if (!browserExecutablePath && !existsSync(playwright.chromium.executablePath())) {
+    installChromium();
+  }
+  return playwright;
 }
 
 const { chromium } = ensurePlaywright();
@@ -64,7 +83,10 @@ let passed = false;
 let error = null;
 
 async function run() {
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({
+    headless: true,
+    ...(browserExecutablePath ? { executablePath: browserExecutablePath } : {}),
+  });
   const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
   try {
     if (feature === "home-hero-search") {
@@ -664,7 +686,6 @@ async function run() {
         error = `order status did not advance: pending ${pendingBefore}→${pendingAfter}, preparing ${preparingBefore}→${preparingAfter}`;
       }
     } else if (feature === "live-order-status") {
-      // Customer places an order, keeps detail open; admin advances status; poll catches it.
       await page.goto(baseUrl + "/login?next=/restaurants/harbour-burger-co", {
         waitUntil: "networkidle",
       });
@@ -675,19 +696,6 @@ async function run() {
         page.getByRole("button", { name: /sign in/i }).click(),
       ]);
       await page.waitForLoadState("networkidle");
-      await page.evaluate(() => {
-        localStorage.setItem(
-          "aussieeats_location_v1",
-          JSON.stringify({
-            label: "Sydney",
-            suburb: "Sydney",
-            state: "NSW",
-            postcode: "2000",
-            lat: -33.8688,
-            lng: 151.2093,
-          }),
-        );
-      });
 
       const addButtons = page.getByRole("button", { name: "Add", exact: true });
       await addButtons.first().waitFor({ state: "visible", timeout: 15000 });
@@ -709,6 +717,9 @@ async function run() {
       await page.waitForSelector('[data-live-order-status="pending"]', { timeout: 10000 });
       await page.waitForSelector('[data-live-polling="true"]', { timeout: 5000 });
       await page.waitForSelector("[data-courier-eta]", { timeout: 10000 });
+      const etaBanner = page.locator("[data-courier-eta]");
+      const beforeEta = await etaBanner.getAttribute("data-courier-eta");
+      const beforeEtaMax = Number(await etaBanner.getAttribute("data-courier-eta-max"));
       await page.screenshot({
         path: join(evidenceDir, "01-action-customer-order-live.png"),
         fullPage: true,
@@ -718,6 +729,7 @@ async function run() {
         orderUrl,
         orderId,
         livePending: true,
+        eta: beforeEta,
       });
 
       const adminContext = await browser.newContext();
@@ -752,7 +764,10 @@ async function run() {
 
       await page.waitForSelector('[data-live-order-status="preparing"]', { timeout: 12000 });
       const liveStatus = await page.locator("[data-live-order-status]").getAttribute("data-live-order-status");
-      const eta = await page.locator("[data-courier-eta]").getAttribute("data-courier-eta");
+      const eta = await etaBanner.getAttribute("data-courier-eta");
+      const etaMax = Number(await etaBanner.getAttribute("data-courier-eta-max"));
+      const etaDecreased =
+        Number.isFinite(etaMax) && Number.isFinite(beforeEtaMax) && etaMax <= beforeEtaMax;
       await page.screenshot({
         path: join(evidenceDir, "03-result-customer-preparing.png"),
         fullPage: true,
@@ -761,10 +776,11 @@ async function run() {
         result: "customer view picked up preparing via poll",
         liveStatus,
         eta,
+        etaDecreased,
       });
-      passed = liveStatus === "preparing" && Boolean(eta);
+      passed = liveStatus === "preparing" && Boolean(eta) && etaDecreased;
       if (!passed) {
-        error = `live-order-status failed: liveStatus=${liveStatus} eta=${eta} orderUrl=${orderUrl}`;
+        error = `live-order-status failed: liveStatus=${liveStatus} eta=${beforeEta}→${eta} orderUrl=${orderUrl}`;
       }
     } else if (feature === "admin-menu-edit") {
       await page.goto(baseUrl + "/admin/login", { waitUntil: "networkidle" });
@@ -809,9 +825,23 @@ async function run() {
         fullPage: true,
       });
       steps.push({ result: "menu price persisted", afterText, hasNewPrice });
-      passed = hasNewPrice;
+      let restored = false;
+      if (beforePrice) {
+        const updatedItem = page.locator("section.panel ul li").first();
+        await updatedItem.getByRole("button", { name: "Edit" }).click();
+        const restoreDialog = page.getByRole("dialog", { name: "Edit menu item" });
+        await restoreDialog.locator('input[name="price"]').fill(beforePrice);
+        await restoreDialog.getByRole("button", { name: "Save" }).click();
+        await restoreDialog.waitFor({ state: "hidden", timeout: 15000 });
+        await page.reload({ waitUntil: "networkidle" });
+        const restoredText =
+          (await page.locator("section.panel ul li").first().locator("p.font-medium").first().textContent()) || "";
+        restored = restoredText.includes(`$${beforePrice}`);
+        steps.push({ cleanup: "restored original menu price", restored });
+      }
+      passed = hasNewPrice && restored;
       if (!passed) {
-        error = `menu price not updated; before=${beforePrice} expected=$${nextPrice} after=${afterText}`;
+        error = `menu price verification failed; before=${beforePrice} expected=$${nextPrice} after=${afterText} restored=${restored}`;
       }
     } else if (feature === "demo-lab") {
       await page.goto(baseUrl + "/demo-admin", { waitUntil: "networkidle" });
