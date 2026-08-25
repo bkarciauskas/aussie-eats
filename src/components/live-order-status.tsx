@@ -44,6 +44,7 @@ function CourierEtaBanner({ eta }: { eta: CourierEtaResult }) {
     <div
       className="mb-4 rounded-xl bg-[var(--ae-cream)] px-4 py-3"
       data-courier-eta={eta.label}
+      data-courier-eta-max={eta.maxMinutes}
       aria-live="polite"
     >
       <p className="text-xs font-medium uppercase tracking-wide text-[var(--ae-ink-muted)]">

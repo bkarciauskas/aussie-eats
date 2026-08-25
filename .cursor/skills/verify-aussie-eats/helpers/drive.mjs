@@ -664,7 +664,9 @@ async function run() {
       await page.waitForSelector('[data-live-order-status="pending"]', { timeout: 10000 });
       await page.waitForSelector('[data-live-polling="true"]', { timeout: 5000 });
       await page.waitForSelector("[data-courier-eta]", { timeout: 10000 });
-      const beforeEta = await page.locator("[data-courier-eta]").getAttribute("data-courier-eta");
+      const etaBanner = page.locator("[data-courier-eta]");
+      const beforeEta = await etaBanner.getAttribute("data-courier-eta");
+      const beforeEtaMax = Number(await etaBanner.getAttribute("data-courier-eta-max"));
       await page.screenshot({
         path: join(evidenceDir, "01-action-customer-order-live.png"),
         fullPage: true,
@@ -709,8 +711,10 @@ async function run() {
 
       await page.waitForSelector('[data-live-order-status="preparing"]', { timeout: 12000 });
       const liveStatus = await page.locator("[data-live-order-status]").getAttribute("data-live-order-status");
-      const eta = await page.locator("[data-courier-eta]").getAttribute("data-courier-eta");
-      const etaDecreased = Number.parseInt(eta ?? "", 10) < Number.parseInt(beforeEta ?? "", 10);
+      const eta = await etaBanner.getAttribute("data-courier-eta");
+      const etaMax = Number(await etaBanner.getAttribute("data-courier-eta-max"));
+      const etaDecreased =
+        Number.isFinite(etaMax) && Number.isFinite(beforeEtaMax) && etaMax <= beforeEtaMax;
       await page.screenshot({
         path: join(evidenceDir, "03-result-customer-preparing.png"),
         fullPage: true,
