@@ -14,6 +14,14 @@ const root = join(__dirname, "..");
 const toolsDir = join(root, ".cursor/skills/verify-aussie-eats/.tools");
 const outDir = join("/opt/cursor/artifacts", "apj-20-happy-path");
 const baseUrl = process.env.BASE_URL || "http://127.0.0.1:3010";
+const browserExecutablePath = [
+  process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
+  process.env.CHROME_PATH,
+  "/usr/local/bin/google-chrome",
+  "/usr/bin/google-chrome-stable",
+  "/usr/bin/chromium",
+  "/usr/bin/chromium-browser",
+].find((path) => path && existsSync(path));
 
 function ensurePlaywright() {
   try {
@@ -28,7 +36,10 @@ const videoDir = join(outDir, "raw");
 mkdirSync(videoDir, { recursive: true });
 
 const { chromium } = ensurePlaywright();
-const browser = await chromium.launch({ headless: true });
+const browser = await chromium.launch({
+  headless: true,
+  ...(browserExecutablePath ? { executablePath: browserExecutablePath } : {}),
+});
 const context = await browser.newContext({
   viewport: { width: 1280, height: 800 },
   recordVideo: { dir: videoDir, size: { width: 1280, height: 800 } },
