@@ -124,10 +124,42 @@ async function run() {
       await page.screenshot({ path: join(evidenceDir, "02-result-restaurants.png") });
       const body = await page.content();
       const hasHeading = /Restaurants/i.test(body);
-      const hasRow = await page.locator("a.restaurant-row").count();
-      steps.push({ result: "opened restaurant directory", url: page.url(), hasHeading, restaurantRows: hasRow });
-      passed = hasHeading && hasRow > 0;
-      if (!passed) error = `assertions failed: hasHeading=${hasHeading} rows=${hasRow}`;
+      const page1Rows = await page.locator("a.restaurant-row").count();
+      const page1Hrefs = await page.locator("a.restaurant-row").evaluateAll((els) =>
+        els.map((el) => (el instanceof HTMLAnchorElement ? el.getAttribute("href") : null)),
+      );
+      const pager = page.getByRole("navigation", { name: "Restaurant list pages" });
+      const hasPager = (await pager.count()) > 0;
+      steps.push({
+        result: "opened restaurant directory",
+        url: page.url(),
+        hasHeading,
+        restaurantRows: page1Rows,
+        hasPager,
+      });
+      let page2Ok = true;
+      if (hasPager) {
+        await pager.getByRole("link", { name: "Next" }).click();
+        await page.waitForURL(/[?&]page=2\b/, { timeout: 15000 });
+        await page.locator("a.restaurant-row").first().waitFor({ state: "visible", timeout: 20000 });
+        await page.screenshot({ path: join(evidenceDir, "03-result-page-2.png") });
+        const page2Rows = await page.locator("a.restaurant-row").count();
+        const page2Hrefs = await page.locator("a.restaurant-row").evaluateAll((els) =>
+          els.map((el) => (el instanceof HTMLAnchorElement ? el.getAttribute("href") : null)),
+        );
+        const overlap = page1Hrefs.filter((href) => href && page2Hrefs.includes(href));
+        steps.push({
+          result: "opened page 2",
+          url: page.url(),
+          restaurantRows: page2Rows,
+          overlap: overlap.length,
+        });
+        page2Ok = page2Rows > 0 && page2Rows <= 10 && overlap.length === 0;
+      }
+      passed = hasHeading && page1Rows > 0 && page1Rows <= 10 && page2Ok;
+      if (!passed) {
+        error = `assertions failed: hasHeading=${hasHeading} page1Rows=${page1Rows} hasPager=${hasPager} page2Ok=${page2Ok}`;
+      }
     } else if (feature === "search-suggestions") {
       await page.goto(baseUrl + "/", { waitUntil: "domcontentloaded" });
       const input = page.locator("#restaurant-search-hero");

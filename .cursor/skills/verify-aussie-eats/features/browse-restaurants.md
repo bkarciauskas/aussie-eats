@@ -19,8 +19,8 @@ Nav **Restaurants** → `/restaurants`, or open `/restaurants` directly.
 ```
 
 - Open `/`, then choose **Restaurants** in the primary nav.
-- Assert heading **Restaurants** and at least one `a.restaurant-row`.
-- Optional manual: set City to **Sydney** and confirm filtered results.
+- Assert heading **Restaurants** and at most 10 `a.restaurant-row` cards.
+- When the catalog has more than 10 matches, assert **Restaurant list pages** is present, open **Next**, and confirm page 2 has a new set of up-to-10 rows with no overlap.
 
 ## Gotchas
 
