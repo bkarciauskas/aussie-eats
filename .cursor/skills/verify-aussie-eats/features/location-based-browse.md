@@ -23,7 +23,7 @@ Primary nav **Restaurants** → **Use my location** → allow location access.
 
 ## Gotchas
 
-- Browser location permission is required; denial shows **Could not get your location**.
+- Browser location permission is required; denial shows **Could not get your location** below the location row.
 - **Use my location** and distance sorting work without a Google Maps key.
 - Address autocomplete and interactive map pins still require `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`.
 - Requires a seeded catalog so restaurant cards can show distance.

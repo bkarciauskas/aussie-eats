@@ -302,6 +302,59 @@ async function run() {
       if (!passed) {
         error = `location browse assertions failed: hasLocation=${hasLocation} hasDistance=${hasDistance} url=${url}`;
       }
+    } else if (feature === "location-search-error-layout") {
+      await page.addInitScript(() => {
+        const fail = (_ok, err) => {
+          if (typeof err === "function") {
+            err({ code: 1, message: "User denied Geolocation" });
+          }
+        };
+        Object.defineProperty(navigator, "geolocation", {
+          configurable: true,
+          value: {
+            getCurrentPosition: fail,
+            watchPosition: fail,
+            clearWatch() {},
+          },
+        });
+      });
+      await page.setViewportSize({ width: 1280, height: 800 });
+      await page.goto(
+        `${baseUrl}/restaurants?lat=-33.868800&lng=151.209300&place=My+location`,
+        { waitUntil: "domcontentloaded" },
+      );
+      const useLocation = page.getByRole("button", { name: "Use my location" });
+      await useLocation.waitFor({ state: "visible" });
+      await page.getByRole("button", { name: "Clear" }).waitFor({ state: "visible" });
+      await page.screenshot({ path: join(evidenceDir, "01-action-before-geo-error.png") });
+      steps.push({ action: "opened /restaurants with an existing pin and denied geolocation" });
+      await useLocation.click();
+      const errorText = page.locator("[data-location-search-error]");
+      await errorText.waitFor({ state: "visible" });
+      const field = page.locator("[data-location-search] .field").first();
+      const fieldBox = await field.boundingBox();
+      const buttonBox = await useLocation.boundingBox();
+      const errorBox = await errorText.boundingBox();
+      const labelBox = await page.locator("[data-location-search] .field span").first().boundingBox();
+      await page.screenshot({ path: join(evidenceDir, "02-result-error-below-row.png") });
+      const fieldWide = Boolean(fieldBox && fieldBox.width >= 240);
+      const errorBelow =
+        Boolean(errorBox && buttonBox && errorBox.y >= buttonBox.y + buttonBox.height - 2);
+      const labelOneLine = Boolean(labelBox && labelBox.height <= 28);
+      steps.push({
+        result: "geo error sits below an intact location row",
+        fieldWidth: fieldBox?.width ?? null,
+        errorY: errorBox?.y ?? null,
+        buttonBottom: buttonBox ? buttonBox.y + buttonBox.height : null,
+        labelHeight: labelBox?.height ?? null,
+        fieldWide,
+        errorBelow,
+        labelOneLine,
+      });
+      passed = fieldWide && errorBelow && labelOneLine;
+      if (!passed) {
+        error = `location search error layout failed fieldWide=${fieldWide} errorBelow=${errorBelow} labelOneLine=${labelOneLine} fieldWidth=${fieldBox?.width} labelHeight=${labelBox?.height}`;
+      }
     } else if (feature === "customer-login") {
       await page.goto(baseUrl + "/login", { waitUntil: "networkidle" });
       await page.locator('input[name="email"]').fill("demo@aussieeats.local");
