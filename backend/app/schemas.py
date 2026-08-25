@@ -7,6 +7,7 @@ from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.domain.restaurant_list import RESTAURANT_LIST_PAGE_SIZE
 from app.models import OrderStatus, Role, UserPublic
 
 
@@ -68,6 +69,9 @@ class RestaurantSummary(ApiModel):
 class RestaurantListResponse(ApiModel):
     restaurants: list[RestaurantSummary]
     available_cuisines: list[str] = Field(default_factory=list, alias="availableCuisines")
+    page: int = 1
+    page_size: int = Field(default=RESTAURANT_LIST_PAGE_SIZE, alias="pageSize")
+    total: int = 0
 
 
 class MenuItemOut(ApiModel):

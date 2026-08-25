@@ -25,6 +25,7 @@ function useUpdateLocation() {
         params.delete("lng");
         params.delete("place");
       }
+      params.delete("page");
       startTransition(() => {
         router.push(`/restaurants?${params.toString()}`);
       });

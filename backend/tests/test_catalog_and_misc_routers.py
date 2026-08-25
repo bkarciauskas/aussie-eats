@@ -13,6 +13,9 @@ def test_restaurants_list_and_detail(client, seed_catalog):
     assert listed.status_code == 200
     body = listed.json()
     assert len(body["restaurants"]) == 1
+    assert body["total"] == 1
+    assert body["page"] == 1
+    assert body["pageSize"] == 10
     assert body["restaurants"][0]["slug"] == "bondi-burger-co"
     assert "Burgers" in body["availableCuisines"]
 

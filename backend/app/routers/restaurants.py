@@ -12,6 +12,7 @@ from app.domain.dietary import (
     DIET_IDS,
     restaurant_matches_diets,
 )
+from app.domain.restaurant_list import RESTAURANT_LIST_PAGE_SIZE, page_window
 from app.domain.search import parse_cuisine_tags, restaurant_matches_query
 from app.mongo_util import normalize_tags_for_api, strip_mongo_id
 from app.schemas import (
@@ -82,6 +83,8 @@ async def list_restaurants(
     cuisine: str = Query(default=""),
     q: str = Query(default=""),
     diet: str = Query(default=""),
+    page: int = Query(default=1),
+    page_size: int = Query(default=RESTAURANT_LIST_PAGE_SIZE, alias="pageSize"),
 ) -> RestaurantListResponse:
     query: dict = {"isActive": True} if active_only else {}
     wanted_city = find_demo_city(city)
@@ -134,9 +137,15 @@ async def list_restaurants(
             if restaurant_matches_diets(items_by_restaurant.get(restaurant["id"], []), diets)
         ]
 
+    page_items, clamped_page, clamped_size, total = page_window(
+        filtered, page, page_size
+    )
     return RestaurantListResponse(
-        restaurants=[_restaurant_summary(restaurant) for restaurant in filtered],
+        restaurants=[_restaurant_summary(restaurant) for restaurant in page_items],
         availableCuisines=available_cuisines,
+        page=clamped_page,
+        pageSize=clamped_size,
+        total=total,
     )
 
 
