@@ -8,6 +8,7 @@ Verification recipes from the user's point of view. Each file is a complete proo
 | Search suggestions | [search-suggestions.md](./search-suggestions.md) | Hero typeahead + recent searches |
 | Browse restaurants | [browse-restaurants.md](./browse-restaurants.md) | Storefront `/restaurants` |
 | Location-based browse | [location-based-browse.md](./location-based-browse.md) | `/restaurants` geolocation → distance sort |
+| Location search error layout | [location-search-error-layout.md](./location-search-error-layout.md) | `/restaurants` geo error keeps the bar on one row |
 | Melbourne city browse | [melbourne-city-browse.md](./melbourne-city-browse.md) | Home city pin → `/restaurants?city=melbourne` |
 | Customer login | [customer-login.md](./customer-login.md) | Storefront `/login` |
 | Favourites | [favourites.md](./favourites.md) | Storefront `/restaurants` → `/favourites` |
