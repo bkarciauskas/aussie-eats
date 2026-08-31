@@ -34,6 +34,7 @@ flowchart LR
 | `src/lib/cities.ts` | Canonical `DEMO_CITIES` (id + label + CBD pin). `resolveRestaurantQuery` treats a bare city name in `q` as a city filter. `matchesRestaurantCity` accepts id (`melbourne`) or label (`Melbourne`). |
 | `src/components/location-provider.tsx` | Session pin in `localStorage` key `aussieeats_location_v1`. |
 | `src/components/restaurant-search.tsx` | Hero/header search waits for hydration so a saved pin is not dropped, then navigates to `/restaurants?...`. |
+| `src/components/location-search.tsx` | On `/restaurants` (`RestaurantsExplorer`): Places autocomplete (when Maps key is set) and **Use my location**. Writes `lat` / `lng` / `place` into the URL. |
 | `GET /restaurants` (`backend/app/routers/restaurants.py`) | **Server-side** filters: `city` (Mongo query on label), then in-process `cuisine` / `q` / `diet`. City uses a case-insensitive exact label match via `find_demo_city`. Diet loads menu items for the scoped set and keeps venues where one item satisfies every selected diet. |
 | `src/app/(store)/restaurants/page.tsx` | Calls `listRestaurants` with `city` / `cuisine` / `q` / `diet`. Applies **open-now** and distance/ETA in Next (needs opening-hours TZ + origin pin). Optionally sorts by Haversine when `lat`/`lng` are present. |
 | `src/lib/dietary.ts` | Diet filter ids, URL parsing (`diet=…`, `allergy=nuts`). Untagged items are not treated as nut-free. Venue-level `dietaryTags` is display-only. |
@@ -44,6 +45,7 @@ flowchart LR
 - Open-now stays on the Next side. Hours evaluation needs the city label for IANA TZ and is not pushed into the list API.
 - Search submit must not run before `hydrated` or the city query param can be lost on first paint.
 - Map pins on `/restaurants` come from the **same filtered list** as the cards (`RestaurantsExplorer`), not a separate query.
+- Geolocation failure must not break the search row (APJ-23): the error alert (`data-location-search-error`) sits **below** the controls row (`data-location-search-controls`), not inside the `sm:flex-row` flex. A regression test in `location-search.test.ts` asserts that markup shape.
 
 ### Typeahead (`GET /search/suggest`)
 
@@ -56,7 +58,7 @@ When Atlas Search is available, FastAPI prefers the `restaurants_autocomplete` s
 | Piece | Role |
 | --- | --- |
 | `src/lib/cart-types.ts` | `unitPriceCents` is integer AUD cents. `cartSubtotalCents` = Σ(unit × quantity). |
-| `src/components/cart-provider.tsx` | Persists `aussieeats_cart_v1`. One restaurant per cart. Quantity capped by `MAX_LINE_QUANTITY` (99). |
+| `src/components/cart-provider.tsx` | Persists `aussieeats_cart_v1`. One restaurant per cart. Quantity capped by `MAX_LINE_QUANTITY` (99). Subtotal can be swapped by the Demo lab scenario below. |
 | `src/app/actions/orders.ts` → `placeOrder` in `src/lib/backend.ts` | Posts cart lines to FastAPI; backend re-reads menu prices from Mongo and ignores client unit prices for the charge. |
 | `src/lib/money.ts` | Display only: `formatAUD(cents)` via `en-AU`. |
 
@@ -64,6 +66,25 @@ When Atlas Search is available, FastAPI prefers the `restaurants_autocomplete` s
 
 - Never pass dollars into `unitPriceCents` (regression: `priceCents / 100` broke cart totals). Admin forms convert dollars → cents with `Math.round(Number(price) * 100)`.
 - Checkout recomputes subtotal from Mongo prices × validated quantities inside FastAPI.
+
+## Demo lab (`/demo-admin`)
+
+**Intent:** Presenter control plane for Cursor capability demos. Toggle intentional storefront faults in **this browser only**, then turn them off — no git restore. Not restaurant `/admin`.
+
+| Piece | Role |
+| --- | --- |
+| `src/app/(store)/demo-admin/page.tsx` + `DemoLab` | Lists scenarios from `DEMO_SCENARIOS` with on/off switches. |
+| `DemoProvider` (`src/components/demo-provider.tsx`) | Root-layout context. Persists enabled ids in `localStorage` key `aussieeats_demo_v1`. Syncs across tabs via `storage` events. |
+| `src/lib/demo/scenarios.ts` | Scenario registry (`id`, capability, title, summary, reproduce steps). Currently one: `cart-subtotal-ignores-qty` (capability `debug`). |
+| `src/lib/demo/cart-line-totals.ts` | Bug path: `cartSubtotalFromLines` sums **unit price once per line** (ignores quantity). |
+| `CartProvider` | When that scenario is on (`useDemoEnabled`), uses `cartSubtotalFromLines` instead of `cartSubtotalCents`. Checkout still re-prices from Mongo. |
+| `DemoBanner` | Fixed corner banner when any scenario is on; links back to `/demo-admin`. |
+
+**Constraints:**
+
+- Scenarios are client-only. Clearing `aussieeats_demo_v1` or using **Turn all off** restores healthy cart math.
+- Unknown ids in storage are dropped by `parseDemoState`.
+- Placed-order totals stay correct even with the cart-subtotal scenario on — that mismatch is the demo point for Cursor Debug.
 
 ## Opening hours and ETA
 
