@@ -20,6 +20,9 @@ Quick fixes for issues that have already bitten this codebase. Verify against cu
 | Typing “Melbourne” in search does nothing useful | Older code treated city names as text `q` | Current `resolveRestaurantQuery` promotes city-name `q` to `city` and clears `q`. |
 | City dropdown / pin dropped on first Find click | Search submitted before location hydration | Search forms disable submit until `hydrated` from `LocationProvider`. |
 | Map pins disagree with the list | Pins not driven by filtered explorer data | Pins must use the same filtered restaurant array as the cards. |
+| Address field disabled on `/restaurants` | No browser Maps key | Set `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`, or use **Use my location** / demo city pin. |
+| “Use my location” fails; search row wraps / looks broken | Geo error was inside the controls flex (APJ-23) | Error must be a sibling below `data-location-search-controls`, not inside the row. See `location-search.test.ts`. |
+| Geo error text shows but pin never updates | Permission denied, timeout, or no `navigator.geolocation` | Allow location in the browser, or pick an address / demo city instead. |
 
 ## Cart / checkout / money
 
@@ -27,12 +30,14 @@ Quick fixes for issues that have already bitten this codebase. Verify against cu
 | --- | --- | --- |
 | Cart shows cents as dollars (or ~100× too small) | `unitPriceCents` fed dollars | Pass `item.priceCents` unchanged into the cart; format only at display via `formatAUD`. |
 | Line total ignores quantity | Subtotal summed units only | Use `cartSubtotalCents` / `unitPriceCents * quantity`. |
-| Checkout total ≠ cart total | Expected: server re-prices from DB | If wrong after refresh, check admin menu `priceCents` and that place-order uses DB prices. |
+| Cart subtotal ignores qty but line items look fine | Demo lab scenario `cart-subtotal-ignores-qty` is on | Open `/demo-admin` → turn it off, or clear `localStorage` key `aussieeats_demo_v1`. |
+| Checkout total ≠ cart total | Expected when server re-prices from DB, or Demo lab cart bug is on | Healthy path: confirm Mongo `priceCents`. Demo path: turn scenario off after the Cursor Debug demo. |
 | Cannot add from a second restaurant | Single-vendor cart | Clear cart first (by design). |
 | Invalid quantity errors | Qty outside 1–99 | `MAX_LINE_QUANTITY` is 99; both UI and `placeOrderAction` enforce it. |
 | Guest checkout rejected with “account already exists” | Email belongs to a real (non-guest) user | Log in with that email, or use a different guest email. |
 | Cannot log in after guest checkout | Guest users have no usable password | Sign up with the same email to upgrade the guest row in place, or continue as guest at checkout. |
 | Guest orders missing after new signup on another email | Signup only preserves orders when the email matches the guest | Reuse the guest email on signup so `userId` is upgraded, not replaced. |
+| Corner “Demo scenario on” banner won’t go away | Enabled scenarios still in `aussieeats_demo_v1` | `/demo-admin` → **Turn all off**, or remove that localStorage key. |
 
 ## Open now / ETA / orders
 
@@ -65,5 +70,5 @@ npm run db:seed
 npm run db:seed
 
 # Clear browser demo state
-# localStorage: aussieeats_cart_v1, aussieeats_location_v1
+# localStorage: aussieeats_cart_v1, aussieeats_location_v1, aussieeats_demo_v1
 ```
