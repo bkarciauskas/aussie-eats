@@ -4,7 +4,7 @@ Operator-facing setup and demos live in the root [README](../README.md). This fo
 
 | Doc | Use when |
 | --- | --- |
-| [Architecture](./architecture.md) | Browse (server filters + indexes), guest checkout, live order polling, cart/money, ETA |
+| [Architecture](./architecture.md) | Browse (server filters + indexes), guest checkout, live order polling, cart/money, ETA, `/demo-admin` lab |
 | [Catalog ingest](./catalog-ingest.md) | Snapshot restore via `db:seed`, export, and optional Places refresh |
 | [Cloud Agents](./cloud-agents.md) | Repo-managed `environment.json`, secrets (`MONGODB_URI`, `JWT_SECRET`), and `*.mongodb.net` egress |
 | [Troubleshooting](./troubleshooting.md) | Common local pitfalls and regressions |
